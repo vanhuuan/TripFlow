@@ -18,7 +18,7 @@ public class AuthController(
     ICurrentUserService currentUserService) : ControllerBase
 {
     [HttpPost("signup")]
-    public async Task<ActionResult<AuthResponse>> Signup(SignupRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<AuthResponse>> Signup([FromBody] SignupRequest request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim();
         var displayName = request.DisplayName.Trim();
