@@ -64,15 +64,15 @@ Initialize the frontend application using React, Vite, TypeScript, and Tailwind 
 
 ---
 
-### TRIP-003 — Set up backend with .NET 8 Web API
+### TRIP-003 — Set up backend with .NET 10 Web API
 
 **Description**
 
-Initialize the backend API using .NET 8 Web API.
+Initialize the backend API using .NET 10 Web API.
 
 **Scope**
 
-* Create .NET 8 Web API project
+* Create .NET 10 Web API project
 * Add basic controller structure
 * Add Swagger
 * Add appsettings files
