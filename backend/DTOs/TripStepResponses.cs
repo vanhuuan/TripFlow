@@ -12,8 +12,7 @@ public record TripStepResponse(
     DateTimeOffset? ScheduledAt,
     string? GoogleMapsUrl,
     string? ExternalUrl,
-    string? TicketImageUrl,
-    string? PlaceImageUrl,
+    IReadOnlyList<string> ImageUrls,
     int OrderIndex,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);

@@ -1,7 +1,7 @@
-import { CheckCircle2, Edit, ListPlus, Play, Trash2 } from "lucide-react";
+import { CheckCircle2, Copy, Edit, Eye, ListPlus, Link2, Play, Share2, Trash2, Unlock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { completeTrip, deleteTrip, getTrip, startTrip, type TripDetail } from "../api/trips";
+import { completeTrip, createTripShareLink, deleteTrip, disableTripShareLink, getTrip, startTrip, type TripDetail } from "../api/trips";
 import { PageHeader } from "../components/PageHeader";
 import { formatDateRange, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
 
@@ -11,6 +11,7 @@ export function TripDetailPage() {
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function TripDetailPage() {
         if (isMounted) {
           setTrip(loadedTrip);
           setError(null);
+          setShareUrl(loadedTrip.isPublicShared && loadedTrip.publicShareToken ? `${window.location.origin}/share/${loadedTrip.publicShareToken}` : null);
         }
       })
       .catch(() => {
@@ -44,14 +46,13 @@ export function TripDetailPage() {
   }, [tripId]);
 
   async function handleStart() {
-    if (!tripId) {
-      return;
-    }
-
+    if (!tripId) return;
     setIsMutating(true);
     try {
-      setTrip(await startTrip(tripId));
+      const startedTrip = await startTrip(tripId);
+      setTrip(startedTrip);
       setError(null);
+      navigate(`/trips/${startedTrip.id}/focus`, { replace: true });
     } catch {
       setError("Trip could not be started.");
     } finally {
@@ -60,10 +61,7 @@ export function TripDetailPage() {
   }
 
   async function handleComplete() {
-    if (!tripId) {
-      return;
-    }
-
+    if (!tripId) return;
     setIsMutating(true);
     try {
       setTrip(await completeTrip(tripId));
@@ -75,11 +73,8 @@ export function TripDetailPage() {
     }
   }
 
-  async function handleDelete() {
-    if (!tripId || !window.confirm("Delete this trip? This cannot be undone.")) {
-      return;
-    }
-
+  async function handleDeleteTrip() {
+    if (!tripId || !window.confirm("Delete this trip? This cannot be undone.")) return;
     setIsMutating(true);
     try {
       await deleteTrip(tripId);
@@ -88,6 +83,41 @@ export function TripDetailPage() {
       setError("Trip could not be deleted.");
       setIsMutating(false);
     }
+  }
+
+  async function handleCreateShare() {
+    if (!tripId) return;
+    setIsMutating(true);
+    try {
+      const response = await createTripShareLink(tripId);
+      setShareUrl(response.shareUrl);
+      setTrip((currentTrip) => (currentTrip ? { ...currentTrip, isPublicShared: true } : currentTrip));
+      setError(null);
+    } catch {
+      setError("Share link could not be created.");
+    } finally {
+      setIsMutating(false);
+    }
+  }
+
+  async function handleDisableShare() {
+    if (!tripId) return;
+    setIsMutating(true);
+    try {
+      await disableTripShareLink(tripId);
+      setShareUrl(null);
+      setTrip((currentTrip) => (currentTrip ? { ...currentTrip, isPublicShared: false } : currentTrip));
+      setError(null);
+    } catch {
+      setError("Share link could not be disabled.");
+    } finally {
+      setIsMutating(false);
+    }
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
   }
 
   if (isLoading) {
@@ -145,9 +175,10 @@ export function TripDetailPage() {
             Complete trip
           </button>
           <Link className="flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50" to={`/trips/${trip.id}/focus`}>
+            <Eye size={18} aria-hidden="true" />
             Open focus mode
           </Link>
-          <button className="flex w-full items-center justify-center gap-2 rounded border border-red-200 px-4 py-2 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60" type="button" onClick={handleDelete} disabled={isMutating}>
+          <button className="flex w-full items-center justify-center gap-2 rounded border border-red-200 px-4 py-2 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60" type="button" onClick={handleDeleteTrip} disabled={isMutating}>
             <Trash2 size={18} aria-hidden="true" />
             Delete trip
           </button>
@@ -157,13 +188,46 @@ export function TripDetailPage() {
       <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold">Itinerary steps</h2>
-            <p className="mt-1 text-sm text-stone-600">Steps are shown in itinerary order.</p>
+            <h2 className="text-base font-semibold">Sharing</h2>
+            <p className="mt-1 text-sm text-stone-600">Generate a public read-only link for this trip.</p>
           </div>
-          <button className="inline-flex items-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-stone-500" type="button" disabled title="Step editing lands in Epic 8">
+          <div className="flex flex-wrap gap-3">
+            <button className="inline-flex items-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50 disabled:opacity-60" type="button" onClick={handleCreateShare} disabled={isMutating}>
+              <Share2 size={18} aria-hidden="true" />
+              {trip.isPublicShared ? "Regenerate link" : "Create share link"}
+            </button>
+            <button className="inline-flex items-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50 disabled:opacity-60" type="button" onClick={handleDisableShare} disabled={isMutating || !trip.isPublicShared}>
+              <Unlock size={18} aria-hidden="true" />
+              Disable share
+            </button>
+          </div>
+        </div>
+
+        {shareUrl ? (
+          <div className="mt-4 flex flex-col gap-3 rounded border border-stone-200 bg-stone-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <a className="break-all text-sm font-medium text-coast underline-offset-4 hover:underline" href={shareUrl} target="_blank" rel="noreferrer">
+              {shareUrl}
+            </a>
+            <button className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 text-sm font-semibold text-ink hover:bg-white" type="button" onClick={handleCopyShareLink}>
+              <Copy size={16} aria-hidden="true" />
+              Copy
+            </button>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-stone-500">No public share link yet.</p>
+        )}
+      </div>
+
+      <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Itinerary steps</h2>
+            <p className="mt-1 text-sm text-stone-600">Read-only step list. Use the edit page to change order or details.</p>
+          </div>
+          <Link className="inline-flex items-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50" to={`/trips/${trip.id}/steps/edit`}>
             <ListPlus size={18} aria-hidden="true" />
-            Add step
-          </button>
+            Edit steps
+          </Link>
         </div>
 
         {trip.steps.length === 0 ? (
@@ -172,14 +236,31 @@ export function TripDetailPage() {
           <ol className="mt-5 space-y-3">
             {trip.steps.map((step) => (
               <li key={step.id} className="rounded border border-stone-200 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="grid gap-2 md:grid-cols-[140px_minmax(0,1fr)_220px] md:items-start">
                   <div>
-                    <p className="font-semibold">{step.title}</p>
-                    <p className="text-sm text-stone-600">{step.type} · {step.status}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{step.type}</p>
+                    <p className="mt-1 text-sm text-stone-600">{step.scheduledAt ? new Date(step.scheduledAt).toLocaleString() : "Unscheduled"}</p>
                   </div>
-                  {step.scheduledAt ? <p className="text-sm text-stone-500">{new Date(step.scheduledAt).toLocaleString()}</p> : null}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-ink">{step.title}</p>
+                    {step.description ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{step.description}</p> : <p className="mt-1 text-sm text-stone-500">No description.</p>}
+                  </div>
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    {step.googleMapsUrl ? (
+                      <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={step.googleMapsUrl} target="_blank" rel="noreferrer">
+                        Maps
+                      </a>
+                    ) : null}
+                    {step.externalUrl ? (
+                      <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={step.externalUrl} target="_blank" rel="noreferrer">
+                        Link
+                      </a>
+                    ) : null}
+                    {step.imageUrls.length > 0 ? (
+                      <span className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink">{step.imageUrls.length} images</span>
+                    ) : null}
+                  </div>
                 </div>
-                {step.description ? <p className="mt-2 text-sm text-stone-700">{step.description}</p> : null}
               </li>
             ))}
           </ol>

@@ -12,8 +12,7 @@ public class TripStep
     public DateTimeOffset? ScheduledAt { get; set; }
     public string? GoogleMapsUrl { get; set; }
     public string? ExternalUrl { get; set; }
-    public string? TicketImageUrl { get; set; }
-    public string? PlaceImageUrl { get; set; }
+    public string? ImageUrlsJson { get; set; }
     public int OrderIndex { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

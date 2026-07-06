@@ -6,11 +6,15 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { PublicOnlyRoute } from "./auth/PublicOnlyRoute";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EditTripPage } from "./pages/EditTripPage";
+import { EditTripStepPage } from "./pages/EditTripStepPage";
 import { FocusModePage } from "./pages/FocusModePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewTripPage } from "./pages/NewTripPage";
+import { NewTripStepPage } from "./pages/NewTripStepPage";
+import { PublicTripPage } from "./pages/PublicTripPage";
 import { SignupPage } from "./pages/SignupPage";
 import { TripDetailPage } from "./pages/TripDetailPage";
+import { TripStepsEditPage } from "./pages/TripStepsEditPage";
 import "./index.css";
 
 const router = createBrowserRouter([
@@ -19,6 +23,7 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "share/:token", element: <PublicTripPage /> },
       {
         element: <PublicOnlyRoute />,
         children: [
@@ -33,6 +38,9 @@ const router = createBrowserRouter([
           { path: "trips/new", element: <NewTripPage /> },
           { path: "trips/:tripId", element: <TripDetailPage /> },
           { path: "trips/:tripId/edit", element: <EditTripPage /> },
+          { path: "trips/:tripId/steps/edit", element: <TripStepsEditPage /> },
+          { path: "trips/:tripId/steps/new", element: <NewTripStepPage /> },
+          { path: "trips/:tripId/steps/:stepId/edit", element: <EditTripStepPage /> },
           { path: "trips/:tripId/focus", element: <FocusModePage /> },
         ],
       },

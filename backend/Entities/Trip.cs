@@ -12,6 +12,8 @@ public class Trip
     public DateOnly? EndDate { get; set; }
     public string? CoverImageUrl { get; set; }
     public TripStatus Status { get; set; }
+    public string? PublicShareToken { get; set; }
+    public bool IsPublicShared { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<TripStep> Steps { get; set; } = [];
