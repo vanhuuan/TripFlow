@@ -1,4 +1,4 @@
-using backend.DTOs;
+﻿using backend.DTOs;
 using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +8,7 @@ namespace backend.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class FilesController(IFileStorageService fileStorageService) : ControllerBase
+public class FilesController(IFileStorageService fileStorageService, ILogger<FilesController> logger) : ControllerBase
 {
     private const long MaxFileSizeBytes = 5 * 1024 * 1024;
 
@@ -42,8 +42,15 @@ public class FilesController(IFileStorageService fileStorageService) : Controlle
             return ValidationProblem(ModelState);
         }
 
-        var url = await fileStorageService.SaveImageAsync(file, cancellationToken);
-
-        return Ok(new FileUploadResponse(url));
+        try
+        {
+            var url = await fileStorageService.SaveImageAsync(file, cancellationToken);
+            return Ok(new FileUploadResponse(url));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to upload image {FileName} with content type {ContentType}.", file.FileName, file.ContentType);
+            return Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Image upload failed.");
+        }
     }
 }

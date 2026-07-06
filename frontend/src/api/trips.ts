@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+﻿import { apiClient } from "./client";
 
 export type TripStatus = "Draft" | "Active" | "Completed";
 export type TripStepType = "Place" | "Transport" | "Hotel" | "Restaurant" | "Activity" | "Note";
@@ -50,7 +50,11 @@ export async function startTrip(tripId: string) { return (await apiClient.post<T
 export async function completeTrip(tripId: string) { return (await apiClient.post<TripDetail>(`/api/trips/${tripId}/complete`)).data; }
 export async function createTripShareLink(tripId: string) { return (await apiClient.post<ShareLinkResponse>(`/api/trips/${tripId}/share`)).data; }
 export async function disableTripShareLink(tripId: string) { await apiClient.delete(`/api/trips/${tripId}/share`); }
-export async function uploadFile(file: File) { const formData = new FormData(); formData.append("file", file); return (await apiClient.post<{ url: string }>("/api/files/upload", formData, { headers: { "Content-Type": "multipart/form-data" } })).data.url; }
+export async function uploadFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return (await apiClient.post<{ url: string }>("/api/files/upload", formData)).data.url;
+}
 export async function getTripSteps(tripId: string) { return (await apiClient.get<TripStep[]>(`/api/trips/${tripId}/steps`)).data; }
 export async function createTripStep(tripId: string, payload: TripStepPayload) { return (await apiClient.post<TripStep>(`/api/trips/${tripId}/steps`, payload)).data; }
 export async function updateTripStep(tripId: string, stepId: string, payload: TripStepPayload) { return (await apiClient.put<TripStep>(`/api/trips/${tripId}/steps/${stepId}`, payload)).data; }
