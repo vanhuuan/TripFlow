@@ -1,9 +1,10 @@
-import { CheckCircle2, Copy, Edit, Eye, ListPlus, Link2, Play, Share2, Trash2, Unlock } from "lucide-react";
+import { CheckCircle2, Copy, Edit, Eye, ListPlus, Play, Share2, Trash2, Unlock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { completeTrip, createTripShareLink, deleteTrip, disableTripShareLink, getTrip, startTrip, type TripDetail } from "../api/trips";
 import { PageHeader } from "../components/PageHeader";
-import { formatDateRange, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
+import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
+import { formatDateRange, formatMoney, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
 
 export function TripDetailPage() {
   const { tripId } = useParams();
@@ -157,6 +158,7 @@ export function TripDetailPage() {
               <h2 className="text-base font-semibold">Trip information</h2>
               <p className="mt-1 text-sm text-stone-600">{formatDateRange(trip.startDate, trip.endDate)}</p>
             </div>
+            <p className="text-sm text-stone-600">Estimated cost: {formatMoney(trip.totalCost, trip.currencyCode)}</p>
             {trip.description ? <p className="whitespace-pre-wrap text-sm text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">No description yet.</p>}
           </div>
         </div>
@@ -243,6 +245,7 @@ export function TripDetailPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-ink">{step.title}</p>
+                    {step.costAmount != null ? <p className="mt-1 text-sm text-stone-600">Cost: {formatMoney(step.costAmount, trip.currencyCode)}</p> : null}
                     {step.description ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{step.description}</p> : <p className="mt-1 text-sm text-stone-500">No description.</p>}
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
@@ -256,10 +259,9 @@ export function TripDetailPage() {
                         Link
                       </a>
                     ) : null}
-                    {step.imageUrls.length > 0 ? (
-                      <span className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink">{step.imageUrls.length} images</span>
-                    ) : null}
+                    {step.imageUrls.length > 0 ? <span className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink">{step.imageUrls.length} images</span> : null}
                   </div>
+                  {step.imageUrls.length > 0 ? <TripStepImageCarousel className="mt-5" imageUrls={step.imageUrls} altPrefix={step.title} /> : null}
                 </div>
               </li>
             ))}
@@ -269,3 +271,4 @@ export function TripDetailPage() {
     </section>
   );
 }
+

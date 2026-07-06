@@ -20,7 +20,7 @@ public class PublicTripsController(AppDbContext dbContext) : ControllerBase
         return trip is null ? NotFound() : Ok(ToResponse(trip));
     }
 
-    private static PublicTripDetailResponse ToResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.Steps.OrderBy(step => step.OrderIndex).Select(ToStepResponse).ToList());
-    private static TripStepResponse ToStepResponse(TripStep step) => new(step.Id, step.TripId, step.Title, step.Description, step.Type, step.Status, step.ScheduledAt, step.GoogleMapsUrl, step.ExternalUrl, DeserializeImageUrls(step.ImageUrlsJson), step.OrderIndex, step.CreatedAt, step.UpdatedAt);
+    private static PublicTripDetailResponse ToResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Steps.OrderBy(step => step.OrderIndex).Select(ToStepResponse).ToList());
+    private static TripStepResponse ToStepResponse(TripStep step) => new(step.Id, step.TripId, step.Title, step.Description, step.Type, step.Status, step.ScheduledAt, step.CostAmount, step.GoogleMapsUrl, step.ExternalUrl, DeserializeImageUrls(step.ImageUrlsJson), step.OrderIndex, step.CreatedAt, step.UpdatedAt);
     private static IReadOnlyList<string> DeserializeImageUrls(string? value) => string.IsNullOrWhiteSpace(value) ? [] : (JsonSerializer.Deserialize<List<string>>(value) ?? []);
 }

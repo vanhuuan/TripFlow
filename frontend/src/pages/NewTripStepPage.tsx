@@ -28,7 +28,7 @@ export function NewTripStepPage() {
     setServerError(null);
     try {
       const step = await createTripStep(tripId, payload);
-      navigate(`/trips/${tripId}`, { replace: true, state: { highlightStepId: step.id } });
+      navigate(`/trips/${tripId}/steps/edit`, { replace: true, state: { highlightStepId: step.id } });
     } catch (error) {
       setServerError(getErrorMessage(error));
     } finally {
@@ -49,7 +49,12 @@ export function NewTripStepPage() {
 
   return (
     <section className="max-w-3xl space-y-6">
-      <PageHeader eyebrow="Itinerary" title="Add step" description="Create a new itinerary step for this trip." />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <PageHeader eyebrow="Itinerary" title="Add step" description="Create a new itinerary step for this trip." />
+        <Link className="inline-flex items-center justify-center rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50" to={`/trips/${tripId}/steps/edit`}>
+          Back to steps
+        </Link>
+      </div>
       <TripStepForm submitLabel="Add step" isSaving={isSaving} serverError={serverError} onSubmit={handleSubmit} />
     </section>
   );

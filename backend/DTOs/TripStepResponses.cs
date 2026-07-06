@@ -10,6 +10,7 @@ public record TripStepResponse(
     TripStepType Type,
     TripStepStatus Status,
     DateTimeOffset? ScheduledAt,
+    decimal? CostAmount,
     string? GoogleMapsUrl,
     string? ExternalUrl,
     IReadOnlyList<string> ImageUrls,

@@ -1,42 +1,45 @@
-import { CheckCircle2, Edit, GripVertical, ListPlus, Play, Save, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { completeTrip, deleteTrip, deleteTripStep, getTrip, reorderTripSteps, startTrip, updateTripStep, type TripDetail, type TripStep, type TripStepPayload } from "../api/trips";
+import { CheckCircle2, Edit, GripVertical, Save, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import {
+  completeTrip,
+  createTripStep,
+  deleteTripStep,
+  getTrip,
+  reorderTripSteps,
+  startTrip,
+  updateTripStep,
+  uploadFile,
+  type TripDetail,
+  type TripStep,
+  type TripStepPayload,
+  type TripStepType,
+} from "../api/trips";
 import { PageHeader } from "../components/PageHeader";
+import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
 import { formatDateRange, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
 
 type Draft = {
   title: string;
   description: string;
-  type: TripStep["type"];
+  type: TripStepType;
   scheduledAt: string;
+  costAmount: string;
   googleMapsUrl: string;
   externalUrl: string;
   imageUrls: string[];
 };
 
-function toDraft(step: TripStep): Draft {
-  return {
-    title: step.title,
-    description: step.description ?? "",
-    type: step.type,
-    scheduledAt: step.scheduledAt ? step.scheduledAt.slice(0, 16) : "",
-    googleMapsUrl: step.googleMapsUrl ?? "",
-    externalUrl: step.externalUrl ?? "",
-    imageUrls: step.imageUrls,
-  };
-}
+type StepCard = {
+  clientId: string;
+  serverId: string | null;
+  draft: Draft;
+  originalDraft: Draft;
+  isEditing: boolean;
+};
 
-function toPayload(draft: Draft): TripStepPayload {
-  return {
-    title: draft.title.trim(),
-    description: draft.description.trim() || null,
-    type: draft.type,
-    scheduledAt: draft.scheduledAt ? new Date(draft.scheduledAt).toISOString() : null,
-    googleMapsUrl: draft.googleMapsUrl.trim() || null,
-    externalUrl: draft.externalUrl.trim() || null,
-    imageUrls: draft.imageUrls,
-  };
+function asText(value: unknown) {
+  return typeof value === "string" ? value : value == null ? "" : String(value);
 }
 
 function imagePreview(url: string) {
@@ -45,98 +48,249 @@ function imagePreview(url: string) {
   return `${baseUrl.replace(/\/$/, "")}${url}`;
 }
 
-function StepReadOnly({ step }: { step: TripStep }) {
+function blankDraft(): Draft {
+  return {
+    title: "",
+    description: "",
+    type: "Place",
+    scheduledAt: "",
+    costAmount: "",
+    googleMapsUrl: "",
+    externalUrl: "",
+    imageUrls: [],
+  };
+}
+
+function toDraft(step: TripStep): Draft {
+  return {
+    title: asText(step.title),
+    description: asText(step.description),
+    type: step.type,
+    scheduledAt: step.scheduledAt ? asText(step.scheduledAt).slice(0, 16) : "",
+    costAmount: asText(step.costAmount),
+    googleMapsUrl: asText(step.googleMapsUrl),
+    externalUrl: asText(step.externalUrl),
+    imageUrls: step.imageUrls,
+  };
+}
+
+function draftToPayload(draft: Draft): TripStepPayload {
+  return {
+    title: asText(draft.title).trim(),
+    description: asText(draft.description).trim() || null,
+    type: draft.type,
+    scheduledAt: asText(draft.scheduledAt) ? new Date(asText(draft.scheduledAt)).toISOString() : null,
+    costAmount: asText(draft.costAmount).trim() ? Number(asText(draft.costAmount)) : null,
+    googleMapsUrl: asText(draft.googleMapsUrl).trim() || null,
+    externalUrl: asText(draft.externalUrl).trim() || null,
+    imageUrls: draft.imageUrls,
+  };
+}
+
+function createClientId() {
+  if ("randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `draft-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function draftSignature(draft: Draft) {
+  return JSON.stringify(draft);
+}
+
+function isDraftDirty(card: StepCard) {
+  return draftSignature(card.draft) !== draftSignature(card.originalDraft);
+}
+
+function validateDraft(draft: Draft) {
+  if (!asText(draft.title).trim()) return "Title is required.";
+  if (!asText(draft.costAmount).trim()) return null;
+
+  const cost = Number(asText(draft.costAmount));
+  if (!Number.isFinite(cost) || cost < 0) return "Cost must be zero or greater.";
+
+  return null;
+}
+
+function StepSummary({ draft, isDirty }: { draft: Draft; isDirty: boolean }) {
+  const scheduledText = asText(draft.scheduledAt);
+  const scheduledLabel = scheduledText ? new Date(scheduledText).toLocaleString() : "Unscheduled";
+
   return (
-    <div className="grid gap-2 md:grid-cols-[140px_minmax(0,1fr)_220px] md:items-start">
+    <div className="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)_180px_220px] md:items-start">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{step.type}</p>
-        <p className="mt-1 text-sm text-stone-600">{step.scheduledAt ? new Date(step.scheduledAt).toLocaleString() : "Unscheduled"}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{draft.type}</p>
+        <p className="mt-1 text-sm text-stone-600">{scheduledLabel}</p>
+        {isDirty ? <p className="mt-2 text-xs font-semibold text-coast">Unsaved changes</p> : null}
       </div>
       <div className="min-w-0">
-        <p className="font-semibold text-ink">{step.title}</p>
-        {step.description ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{step.description}</p> : <p className="mt-1 text-sm text-stone-500">No description.</p>}
+        <p className="font-semibold text-ink">{asText(draft.title) || "Untitled step"}</p>
+        {asText(draft.costAmount).trim() ? <p className="mt-1 text-sm text-stone-600">Cost: {asText(draft.costAmount)}</p> : null}
+        {asText(draft.description).trim() ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{asText(draft.description)}</p> : <p className="mt-1 text-sm text-stone-500">No description.</p>}
+        {draft.imageUrls.length > 0 ? <TripStepImageCarousel className="max-w-[180px]" imageUrls={draft.imageUrls} altPrefix={draft.title || "Step"} variant="compact" /> : null}
       </div>
       <div className="flex flex-wrap gap-2 md:justify-end">
-        {step.googleMapsUrl ? <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={step.googleMapsUrl} target="_blank" rel="noreferrer">Maps</a> : null}
-        {step.externalUrl ? <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={step.externalUrl} target="_blank" rel="noreferrer">Link</a> : null}
-        {step.imageUrls.length > 0 ? <span className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink">{step.imageUrls.length} images</span> : null}
+        {asText(draft.googleMapsUrl).trim() ? (
+          <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={asText(draft.googleMapsUrl).trim()} target="_blank" rel="noreferrer">
+            Maps
+          </a>
+        ) : null}
+        {asText(draft.externalUrl).trim() ? (
+          <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={asText(draft.externalUrl).trim()} target="_blank" rel="noreferrer">
+            Link
+          </a>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function StepEditor({ draft, onChange, onSave, onCancel, onDelete, onDragStart, onDragEnd, onDrop, isMutating }: {
+function StepEditor({
+  draft,
+  onChange,
+  onDone,
+  onCancel,
+  onDelete,
+  onDragStart,
+  onDragEnd,
+  isMutating,
+}: {
   draft: Draft;
   onChange: (next: Draft) => void;
-  onSave: () => void;
+  onDone: () => void;
   onCancel: () => void;
   onDelete: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onDrop: () => void;
   isMutating: boolean;
 }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function handleImageSelection(files: FileList | null) {
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of Array.from(files)) {
+        uploadedUrls.push(await uploadFile(file, "TripStep"));
+      }
+      onChange({ ...draft, imageUrls: [...draft.imageUrls, ...uploadedUrls] });
+    } catch {
+      setUploadError("Image upload failed.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  function removeImage(url: string) {
+    onChange({ ...draft, imageUrls: draft.imageUrls.filter((item) => item !== url) });
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-sm font-medium">
           Type
-          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.type} readOnly />
+          <select className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.type} onChange={(event) => onChange({ ...draft, type: event.target.value as TripStepType })}>
+            {["Place", "Transport", "Hotel", "Restaurant", "Activity", "Note"].map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block text-sm font-medium">
           Title
-          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.title} onChange={(e) => onChange({ ...draft, title: e.target.value })} />
+          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} />
+        </label>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="block text-sm font-medium">
+          Scheduled date/time
+          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" type="datetime-local" value={draft.scheduledAt} onChange={(event) => onChange({ ...draft, scheduledAt: event.target.value })} />
+        </label>
+        <label className="block text-sm font-medium">
+          Cost
+          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" inputMode="decimal" type="number" min="0" step="0.01" value={draft.costAmount} onChange={(event) => onChange({ ...draft, costAmount: event.target.value })} />
         </label>
       </div>
       <label className="block text-sm font-medium">
         Description
-        <textarea className="mt-1 min-h-24 w-full rounded border border-stone-300 px-3 py-2" value={draft.description} onChange={(e) => onChange({ ...draft, description: e.target.value })} />
+        <textarea className="mt-1 min-h-24 w-full rounded border border-stone-300 px-3 py-2" value={draft.description} onChange={(event) => onChange({ ...draft, description: event.target.value })} />
       </label>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-sm font-medium">
-          Scheduled date/time
-          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" type="datetime-local" value={draft.scheduledAt} onChange={(e) => onChange({ ...draft, scheduledAt: e.target.value })} />
+          Google Maps URL
+          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.googleMapsUrl} onChange={(event) => onChange({ ...draft, googleMapsUrl: event.target.value })} />
         </label>
         <label className="block text-sm font-medium">
-          Google Maps URL
-          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.googleMapsUrl} onChange={(e) => onChange({ ...draft, googleMapsUrl: e.target.value })} />
+          External URL
+          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.externalUrl} onChange={(event) => onChange({ ...draft, externalUrl: event.target.value })} />
         </label>
       </div>
-      <label className="block text-sm font-medium">
-        External URL
-        <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.externalUrl} onChange={(e) => onChange({ ...draft, externalUrl: e.target.value })} />
-      </label>
-      <div className="flex flex-wrap gap-2">
-        {draft.imageUrls.map((url, index) => (
-          <img key={`${url}-${index}`} className="h-14 w-14 rounded object-cover ring-1 ring-stone-200" src={imagePreview(url)} alt="Attachment preview" />
-        ))}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {draft.imageUrls.length > 0 ? (
+            draft.imageUrls.map((url, index) => (
+              <div key={`${url}-${index}`} className="relative">
+                <img className="h-20 w-20 rounded object-cover ring-1 ring-stone-200" src={imagePreview(url)} alt="Current image" />
+                <button
+                  type="button"
+                  className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-stone-700 shadow hover:bg-white"
+                  onClick={() => removeImage(url)}
+                  aria-label="Remove image"
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="text-sm text-stone-500">No images yet.</div>
+          )}
+        </div>
+        <label className="block text-sm font-medium">
+          Select images
+          <input
+            className="mt-1 w-full rounded border border-stone-300 px-3 py-2 text-sm"
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => void handleImageSelection(event.target.files)}
+            disabled={isUploading || isMutating}
+          />
+        </label>
+        {uploadError ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{uploadError}</p> : null}
+        {isUploading ? <p className="text-sm text-stone-500">Uploading images...</p> : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className="inline-flex items-center gap-2 rounded bg-coast px-3 py-2 text-sm font-semibold text-white disabled:opacity-60" onClick={onSave} disabled={isMutating}>
-          <Save size={16} aria-hidden="true" />
-          Save
-        </button>
-        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={onCancel} disabled={isMutating}>
-          <X size={16} aria-hidden="true" />
-          Cancel
-        </button>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50"
+          className="inline-flex cursor-grab items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50 active:cursor-grabbing"
           draggable
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={(event) => {
-            event.preventDefault();
-            onDrop();
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", draft.title || "step");
+            onDragStart();
           }}
+          onDragEnd={onDragEnd}
           title="Drag to reorder"
         >
           <GripVertical size={16} aria-hidden="true" />
           Drag
         </button>
-        <button type="button" className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={onDelete} disabled={isMutating}>
+        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={onDone} disabled={isMutating || isUploading}>
+          <Save size={16} aria-hidden="true" />
+          Done
+        </button>
+        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={onCancel} disabled={isMutating || isUploading}>
+          <X size={16} aria-hidden="true" />
+          Cancel
+        </button>
+        <button type="button" className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={onDelete} disabled={isMutating || isUploading}>
           <Trash2 size={16} aria-hidden="true" />
           Delete
         </button>
@@ -145,15 +299,19 @@ function StepEditor({ draft, onChange, onSave, onCancel, onDelete, onDragStart, 
   );
 }
 
+function cardOrderSignature(cards: StepCard[]) {
+  return cards.map((card) => card.serverId ?? card.clientId).join("|");
+}
+
 export function TripStepsEditPage() {
   const { tripId } = useParams();
-  const navigate = useNavigate();
+  const location = useLocation();
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMutating, setIsMutating] = useState(false);
-  const [draggingStepId, setDraggingStepId] = useState<string | null>(null);
-  const [editingStepId, setEditingStepId] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  const [cards, setCards] = useState<StepCard[]>([]);
+  const [savedOrder, setSavedOrder] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -166,8 +324,22 @@ export function TripStepsEditPage() {
     getTrip(tripId)
       .then((loadedTrip) => {
         if (!isMounted) return;
+
+        const highlightedStepId = (location.state as { highlightStepId?: string } | null | undefined)?.highlightStepId ?? null;
+        const nextCards = loadedTrip.steps.map((step) => {
+          const draft = toDraft(step);
+          return {
+            clientId: step.id,
+            serverId: step.id,
+            draft,
+            originalDraft: draft,
+            isEditing: step.id === highlightedStepId,
+          };
+        });
+
         setTrip(loadedTrip);
-        setDrafts(Object.fromEntries(loadedTrip.steps.map((step) => [step.id, toDraft(step)])));
+        setCards(nextCards);
+        setSavedOrder(nextCards.map((card) => card.serverId ?? card.clientId));
         setError(null);
       })
       .catch(() => {
@@ -180,43 +352,129 @@ export function TripStepsEditPage() {
     return () => {
       isMounted = false;
     };
-  }, [tripId]);
+  }, [location.state, tripId]);
 
-  async function handleSaveStep(stepId: string) {
-    if (!tripId || !trip) return;
-    setIsMutating(true);
-    try {
-      const updatedStep = await updateTripStep(tripId, stepId, toPayload(drafts[stepId]));
-      setTrip({ ...trip, steps: trip.steps.map((step) => (step.id === stepId ? updatedStep : step)) });
-      setEditingStepId(null);
-    } catch {
-      setError("Step could not be saved.");
-    } finally {
-      setIsMutating(false);
-    }
+  const hasUnsavedChanges = useMemo(() => {
+    const currentOrder = cardOrderSignature(cards);
+    return currentOrder !== savedOrder.join("|") || cards.some((card) => card.serverId === null || isDraftDirty(card));
+  }, [cards, savedOrder]);
+
+  function updateCard(clientId: string, update: (card: StepCard) => StepCard) {
+    setCards((current) => current.map((card) => (card.clientId === clientId ? update(card) : card)));
   }
 
-  async function handleDeleteStep(step: TripStep) {
-    if (!tripId || !window.confirm(`Delete step "${step.title}"? This cannot be undone.`)) return;
-    setIsMutating(true);
+  function addDraftCard() {
+    const draft = blankDraft();
+    const clientId = createClientId();
+    setCards((current) => [...current, { clientId, serverId: null, draft, originalDraft: draft, isEditing: true }]);
+    setError(null);
+  }
+
+  function moveCard(draggedId: string, targetId: string) {
+    setCards((current) => {
+      const fromIndex = current.findIndex((card) => card.clientId === draggedId);
+      const toIndex = current.findIndex((card) => card.clientId === targetId);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return current;
+
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }
+
+  function cancelCard(card: StepCard) {
+    if (card.serverId === null) {
+      setCards((current) => current.filter((item) => item.clientId !== card.clientId));
+      return;
+    }
+
+    updateCard(card.clientId, (current) => ({ ...current, draft: current.originalDraft, isEditing: false }));
+  }
+
+  async function deleteCard(card: StepCard) {
+    if (!tripId || !window.confirm(`Delete step "${card.draft.title || "Untitled step"}"? This cannot be undone.`)) return;
+
+    if (card.serverId === null) {
+      setCards((current) => current.filter((item) => item.clientId !== card.clientId));
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      await deleteTripStep(tripId, step.id);
-      setTrip((current) => (current ? { ...current, steps: current.steps.filter((item) => item.id !== step.id) } : current));
+      await deleteTripStep(tripId, card.serverId);
+      setCards((current) => current.filter((item) => item.clientId !== card.clientId));
+      setSavedOrder((current) => current.filter((id) => id !== card.serverId));
+      setError(null);
     } catch {
       setError("Step could not be deleted.");
     } finally {
-      setIsMutating(false);
+      setIsSaving(false);
     }
   }
 
-  async function handleReorder(stepIds: string[]) {
-    if (!tripId) return;
+  async function saveAllChanges() {
+    if (!tripId || !cards.length) return;
+
+    for (const card of cards) {
+      const validationError = validateDraft(card.draft);
+      if (validationError) {
+        setError(validationError);
+        updateCard(card.clientId, (current) => ({ ...current, isEditing: true }));
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    setError(null);
+    let nextCards = [...cards];
+
     try {
-      const reorderedSteps = await reorderTripSteps(tripId, stepIds);
-      setTrip((current) => (current ? { ...current, steps: reorderedSteps } : current));
+      for (let index = 0; index < nextCards.length; index++) {
+        const card = nextCards[index];
+        if (card.serverId === null) {
+          const createdStep = await createTripStep(tripId, draftToPayload(card.draft));
+          const savedDraft = toDraft(createdStep);
+          nextCards[index] = {
+            ...card,
+            clientId: createdStep.id,
+            serverId: createdStep.id,
+            draft: savedDraft,
+            originalDraft: savedDraft,
+            isEditing: false,
+          };
+          setCards([...nextCards]);
+          continue;
+        }
+
+        if (isDraftDirty(card)) {
+          const updatedStep = await updateTripStep(tripId, card.serverId, draftToPayload(card.draft));
+          const savedDraft = toDraft(updatedStep);
+          nextCards[index] = {
+            ...card,
+            draft: savedDraft,
+            originalDraft: savedDraft,
+            isEditing: false,
+          };
+          setCards([...nextCards]);
+          continue;
+        }
+
+        nextCards[index] = { ...card, isEditing: false };
+      }
+
+      const persistedIds = nextCards.map((card) => card.serverId).filter((id): id is string => Boolean(id));
+      if (persistedIds.length > 0) {
+        await reorderTripSteps(tripId, persistedIds);
+      }
+
+      setCards(nextCards);
+      setSavedOrder(persistedIds);
       setError(null);
     } catch {
-      setError("Steps could not be reordered.");
+      setError("Changes could not be saved.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -262,6 +520,14 @@ export function TripStepsEditPage() {
         </div>
 
         <div className="space-y-3 rounded border border-stone-200 bg-white p-5 shadow-sm">
+          <button className="flex w-full items-center justify-center gap-2 rounded bg-coast px-4 py-2 font-semibold text-white disabled:opacity-60" type="button" onClick={() => void startTrip(trip.id)} disabled={isSaving || trip.status === "Active"}>
+            <CheckCircle2 size={18} aria-hidden="true" />
+            Start trip
+          </button>
+          <button className="flex w-full items-center justify-center gap-2 rounded bg-ink px-4 py-2 font-semibold text-white disabled:opacity-60" type="button" onClick={() => void completeTrip(trip.id)} disabled={isSaving || trip.status === "Completed"}>
+            <CheckCircle2 size={18} aria-hidden="true" />
+            Complete trip
+          </button>
           <Link className="flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50" to={`/trips/${trip.id}`}>
             Back to trip
           </Link>
@@ -272,78 +538,79 @@ export function TripStepsEditPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold">Step list editor</h2>
-            <p className="mt-1 text-sm text-stone-600">Click Edit to open a step, then save or cancel. Drag handle is in the actions row.</p>
+            <p className="mt-1 text-sm text-stone-600">Add a step to append a new editable card. Reorder locally, then save all changes together.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50 disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
+              <Edit size={16} aria-hidden="true" />
+              Add step
+            </button>
+            <button className="inline-flex items-center justify-center gap-2 rounded bg-coast px-4 py-2 font-semibold text-white disabled:opacity-60" type="button" onClick={() => void saveAllChanges()} disabled={isSaving || !hasUnsavedChanges}>
+              <Save size={16} aria-hidden="true" />
+              {isSaving ? "Saving..." : "Save all changes"}
+            </button>
           </div>
         </div>
 
-        {trip.steps.length === 0 ? (
-          <p className="mt-5 rounded border border-dashed border-stone-200 p-4 text-sm text-stone-500">No itinerary steps yet.</p>
+        {cards.length === 0 ? (
+          <div className="mt-5 rounded border border-dashed border-stone-200 p-4">
+            <p className="text-sm text-stone-500">No itinerary steps yet.</p>
+            <button className="mt-3 inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" type="button" onClick={addDraftCard} disabled={isSaving}>
+              <Edit size={16} aria-hidden="true" />
+              Add your first step
+            </button>
+          </div>
         ) : (
-          <ol className="mt-5 space-y-3">
-            {trip.steps.map((step) => {
-              const isEditing = editingStepId === step.id;
-              const draft = drafts[step.id] ?? toDraft(step);
-
-              return (
-                <li key={step.id} className="rounded border border-stone-200 p-4">
-                  {isEditing ? (
+          <>
+            <ol className="mt-5 space-y-3">
+              {cards.map((card) => (
+                <li
+                  key={card.clientId}
+                  className={`rounded border border-stone-200 p-4 ${draggingCardId === card.clientId ? "border-coast bg-teal-50/20" : ""}`}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!draggingCardId || draggingCardId === card.clientId) return;
+                    moveCard(draggingCardId, card.clientId);
+                    setDraggingCardId(null);
+                  }}
+                >
+                  {card.isEditing ? (
                     <StepEditor
-                      draft={draft}
-                      onChange={(next) => setDrafts((current) => ({ ...current, [step.id]: next }))}
-                      onSave={() => handleSaveStep(step.id)}
-                      onCancel={() => {
-                        setEditingStepId(null);
-                        setDrafts((current) => ({ ...current, [step.id]: toDraft(step) }));
-                      }}
-                      onDelete={() => handleDeleteStep(step)}
-                      onDragStart={() => setDraggingStepId(step.id)}
-                      onDragEnd={() => setDraggingStepId(null)}
-                      onDrop={async () => {
-                        if (!draggingStepId || draggingStepId === step.id || !trip) return;
-                        const nextSteps = [...trip.steps];
-                        const fromIndex = nextSteps.findIndex((item) => item.id === draggingStepId);
-                        const toIndex = nextSteps.findIndex((item) => item.id === step.id);
-                        const [moved] = nextSteps.splice(fromIndex, 1);
-                        nextSteps.splice(toIndex, 0, moved);
-                        setDraggingStepId(null);
-                        setTrip({ ...trip, steps: nextSteps });
-                        await handleReorder(nextSteps.map((item) => item.id));
-                      }}
-                      isMutating={isMutating}
+                      draft={card.draft}
+                      onChange={(next) => updateCard(card.clientId, (current) => ({ ...current, draft: next }))}
+                      onDone={() => updateCard(card.clientId, (current) => ({ ...current, isEditing: false }))}
+                      onCancel={() => cancelCard(card)}
+                      onDelete={() => void deleteCard(card)}
+                      onDragStart={() => setDraggingCardId(card.clientId)}
+                      onDragEnd={() => setDraggingCardId(null)}
+                      isMutating={isSaving}
                     />
                   ) : (
                     <>
-                      <StepReadOnly step={step} />
+                      <StepSummary draft={card.draft} isDirty={isDraftDirty(card) || card.serverId === null} />
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={() => setEditingStepId(step.id)}>
+                        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={() => updateCard(card.clientId, (current) => ({ ...current, isEditing: true }))} disabled={isSaving}>
                           <Edit size={16} aria-hidden="true" />
                           Edit
                         </button>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50"
+                          className="inline-flex cursor-grab items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50 active:cursor-grabbing"
                           draggable
-                          onDragStart={() => setDraggingStepId(step.id)}
-                          onDragEnd={() => setDraggingStepId(null)}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={async (event) => {
-                            event.preventDefault();
-                            if (!draggingStepId || draggingStepId === step.id || !trip) return;
-                            const nextSteps = [...trip.steps];
-                            const fromIndex = nextSteps.findIndex((item) => item.id === draggingStepId);
-                            const toIndex = nextSteps.findIndex((item) => item.id === step.id);
-                            const [moved] = nextSteps.splice(fromIndex, 1);
-                            nextSteps.splice(toIndex, 0, moved);
-                            setDraggingStepId(null);
-                            setTrip({ ...trip, steps: nextSteps });
-                            await handleReorder(nextSteps.map((item) => item.id));
+                          onDragStart={(event) => {
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", card.clientId);
+                            setDraggingCardId(card.clientId);
                           }}
+                          onDragEnd={() => setDraggingCardId(null)}
                           title="Drag to reorder"
+                          disabled={isSaving}
                         >
                           <GripVertical size={16} aria-hidden="true" />
                           Drag
                         </button>
-                        <button type="button" className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => handleDeleteStep(step)} disabled={isMutating}>
+                        <button type="button" className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void deleteCard(card)} disabled={isSaving}>
                           <Trash2 size={16} aria-hidden="true" />
                           Delete
                         </button>
@@ -351,13 +618,17 @@ export function TripStepsEditPage() {
                     </>
                   )}
                 </li>
-              );
-            })}
-          </ol>
+              ))}
+            </ol>
+            <div className="mt-5 flex justify-end">
+              <button className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50 disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
+                <Edit size={16} aria-hidden="true" />
+                Add step
+              </button>
+            </div>
+          </>
         )}
       </div>
     </section>
   );
 }
-
-

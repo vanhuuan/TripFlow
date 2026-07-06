@@ -31,6 +31,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(trip => trip.Destination).HasMaxLength(150).IsRequired();
             entity.Property(trip => trip.Description).HasMaxLength(2000);
             entity.Property(trip => trip.CoverImageUrl).HasMaxLength(2048);
+            entity.Property(trip => trip.CurrencyCode).HasMaxLength(3).HasDefaultValue("USD").IsRequired();
             entity.Property(trip => trip.PublicShareToken).HasMaxLength(128);
             entity.HasIndex(trip => trip.PublicShareToken).IsUnique();
             entity.Property(trip => trip.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
@@ -48,6 +49,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(step => step.Description).HasMaxLength(2000);
             entity.Property(step => step.Type).HasConversion<string>().HasMaxLength(32).IsRequired();
             entity.Property(step => step.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(step => step.CostAmount).HasColumnType("numeric(12,2)");
             entity.Property(step => step.GoogleMapsUrl).HasMaxLength(2048);
             entity.Property(step => step.ExternalUrl).HasMaxLength(2048);
             entity.Property(step => step.ImageUrlsJson).HasMaxLength(8000);

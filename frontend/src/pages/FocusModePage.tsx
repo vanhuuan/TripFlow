@@ -1,8 +1,9 @@
-import { CheckCircle2, ExternalLink, Image as ImageIcon, MapPinned, SkipForward, Sparkles } from "lucide-react";
+import { CheckCircle2, ExternalLink, MapPinned, SkipForward, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getTrip, markTripStepDone, skipTripStep, type TripDetail, type TripStep } from "../api/trips";
 import { PageHeader } from "../components/PageHeader";
+import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
 import { formatStepDateTime, stepStatusClassName, stepTypeIcon, stepTypeLabel } from "../components/trips/tripStepFormatting";
 import { statusClassName } from "../components/trips/tripFormatting";
 
@@ -128,8 +129,6 @@ export function FocusModePage() {
   }
 
   const TypeIcon = stepTypeIcon(currentStepResolved.type);
-  const attachmentUrl = resolveAssetUrl(currentStepResolved.imageUrls[0] ?? null);
-
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -183,13 +182,9 @@ export function FocusModePage() {
                   Open link
                 </a>
               ) : null}
-              {attachmentUrl ? (
-                <a className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-3 font-semibold text-ink hover:bg-stone-50 sm:col-span-2" href={attachmentUrl} target="_blank" rel="noreferrer">
-                  <ImageIcon size={18} aria-hidden="true" />
-                  Open attachment
-                </a>
-              ) : null}
             </div>
+
+            {currentStepResolved.imageUrls.length > 0 ? <TripStepImageCarousel className="mt-5" imageUrls={currentStepResolved.imageUrls} altPrefix={currentStepResolved.title} /> : null}
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <button className="inline-flex flex-1 items-center justify-center gap-2 rounded bg-ink px-4 py-3 font-semibold text-white disabled:opacity-60" type="button" onClick={() => handleStatus(currentStepResolved, "Done")} disabled={isMutating}>

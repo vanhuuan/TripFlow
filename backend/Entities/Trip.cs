@@ -11,6 +11,7 @@ public class Trip
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public string? CoverImageUrl { get; set; }
+    public required string CurrencyCode { get; set; }
     public TripStatus Status { get; set; }
     public string? PublicShareToken { get; set; }
     public bool IsPublicShared { get; set; }

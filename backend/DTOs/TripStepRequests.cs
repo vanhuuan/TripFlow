@@ -7,6 +7,7 @@ public record CreateTripStepRequest(
     string? Description,
     TripStepType Type,
     DateTimeOffset? ScheduledAt,
+    decimal? CostAmount,
     string? GoogleMapsUrl,
     string? ExternalUrl,
     IReadOnlyList<string>? ImageUrls);
@@ -16,6 +17,7 @@ public record UpdateTripStepRequest(
     string? Description,
     TripStepType Type,
     DateTimeOffset? ScheduledAt,
+    decimal? CostAmount,
     string? GoogleMapsUrl,
     string? ExternalUrl,
     IReadOnlyList<string>? ImageUrls);

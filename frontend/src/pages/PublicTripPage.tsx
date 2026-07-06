@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getPublicTrip, type PublicTripDetail, type TripStep } from "../api/trips";
 import { PageHeader } from "../components/PageHeader";
+import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
+import { formatMoney } from "../components/trips/tripFormatting";
 import { formatStepDateTime, stepTypeIcon, stepTypeLabel } from "../components/trips/tripStepFormatting";
 
 function resolveAssetUrl(url: string | null) {
@@ -71,7 +73,6 @@ export function PublicTripPage() {
   }
 
   const coverUrl = resolveAssetUrl(trip.coverImageUrl);
-  const attachmentUrl = resolveAssetUrl(currentStep?.imageUrls[0] ?? null);
   const upcomingSteps = trip.steps.filter((step) => step.status === "Todo" && step.id !== currentStep?.id);
   const completedSteps = trip.steps.filter((step) => step.status !== "Todo");
 
@@ -115,6 +116,7 @@ export function PublicTripPage() {
               {coverUrl ? <img className="h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">No cover image</div>}
             </div>
             <div className="space-y-4 p-5">
+              <p className="text-sm text-stone-600">Estimated cost: {formatMoney(trip.totalCost, trip.currencyCode)}</p>
               {trip.description ? <p className="whitespace-pre-wrap text-sm text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">No description yet.</p>}
             </div>
           </div>
@@ -128,6 +130,7 @@ export function PublicTripPage() {
               </div>
             </div>
             <p className="mt-3 text-sm text-stone-600">{formatStepDateTime(currentStep.scheduledAt)}</p>
+            {currentStep.costAmount != null ? <p className="mt-2 text-sm text-stone-600">Cost: {formatMoney(currentStep.costAmount, trip.currencyCode)}</p> : null}
             {currentStep.description ? <p className="mt-4 whitespace-pre-wrap text-sm text-stone-700">{currentStep.description}</p> : <p className="mt-4 text-sm text-stone-500">No description for this step.</p>}
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {currentStep.googleMapsUrl ? (
@@ -142,13 +145,8 @@ export function PublicTripPage() {
                   Open link
                 </a>
               ) : null}
-              {attachmentUrl ? (
-                <a className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-3 font-semibold text-ink hover:bg-stone-50 sm:col-span-2" href={attachmentUrl} target="_blank" rel="noreferrer">
-                  <ImageIcon size={18} aria-hidden="true" />
-                  Open attachment
-                </a>
-              ) : null}
             </div>
+            {currentStep.imageUrls.length > 0 ? <TripStepImageCarousel className="mt-5" imageUrls={currentStep.imageUrls} altPrefix={currentStep.title} /> : null}
           </div>
 
           <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
@@ -172,3 +170,4 @@ export function PublicTripPage() {
     </section>
   );
 }
+

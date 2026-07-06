@@ -24,7 +24,7 @@ public class TripsController(
         if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
         var normalizedRequest = NormalizeRequest(request);
-        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate)) return ValidationProblem(ModelState);
+        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate, normalizedRequest.CurrencyCode)) return ValidationProblem(ModelState);
 
         var now = DateTimeOffset.UtcNow;
         var trip = new Trip
@@ -37,6 +37,7 @@ public class TripsController(
             StartDate = normalizedRequest.StartDate,
             EndDate = normalizedRequest.EndDate,
             CoverImageUrl = normalizedRequest.CoverImageUrl,
+            CurrencyCode = normalizedRequest.CurrencyCode,
             Status = TripStatus.Draft,
             IsPublicShared = false,
             PublicShareToken = null,
@@ -54,7 +55,7 @@ public class TripsController(
     {
         if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
-        var trips = await dbContext.Trips.AsNoTracking().Where(trip => trip.UserId == userId).OrderBy(trip => trip.StartDate == null).ThenBy(trip => trip.StartDate).ThenByDescending(trip => trip.CreatedAt).Select(trip => ToSummaryResponse(trip)).ToListAsync(cancellationToken);
+        var trips = await dbContext.Trips.AsNoTracking().Include(trip => trip.Steps).Where(trip => trip.UserId == userId).OrderBy(trip => trip.StartDate == null).ThenBy(trip => trip.StartDate).ThenByDescending(trip => trip.CreatedAt).Select(trip => ToSummaryResponse(trip)).ToListAsync(cancellationToken);
         return Ok(trips);
     }
 
@@ -71,7 +72,7 @@ public class TripsController(
     {
         if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
         var normalizedRequest = NormalizeRequest(request);
-        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate)) return ValidationProblem(ModelState);
+        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate, normalizedRequest.CurrencyCode)) return ValidationProblem(ModelState);
 
         var trip = await GetOwnedTrip(tripId, userId, cancellationToken);
         if (trip is null) return NotFound();
@@ -82,6 +83,7 @@ public class TripsController(
         trip.StartDate = normalizedRequest.StartDate;
         trip.EndDate = normalizedRequest.EndDate;
         trip.CoverImageUrl = normalizedRequest.CoverImageUrl;
+        trip.CurrencyCode = normalizedRequest.CurrencyCode;
         trip.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(ToDetailResponse(trip));
@@ -152,24 +154,26 @@ public class TripsController(
 
     private async Task<Trip?> GetOwnedTrip(Guid tripId, Guid userId, CancellationToken cancellationToken) => await dbContext.Trips.Include(trip => trip.Steps).SingleOrDefaultAsync(trip => trip.Id == tripId && trip.UserId == userId, cancellationToken);
 
-    private bool ValidateTripRequest(string title, string destination, DateOnly? startDate, DateOnly? endDate)
+    private bool ValidateTripRequest(string title, string destination, DateOnly? startDate, DateOnly? endDate, string currencyCode)
     {
         if (string.IsNullOrWhiteSpace(title)) ModelState.AddModelError(nameof(CreateTripRequest.Title), "Title is required.");
         if (string.IsNullOrWhiteSpace(destination)) ModelState.AddModelError(nameof(CreateTripRequest.Destination), "Destination is required.");
         if (startDate.HasValue && endDate.HasValue && endDate.Value < startDate.Value) ModelState.AddModelError(nameof(CreateTripRequest.EndDate), "End date must be on or after start date.");
+        if (string.IsNullOrWhiteSpace(currencyCode) || currencyCode.Length != 3) ModelState.AddModelError(nameof(CreateTripRequest.CurrencyCode), "Currency code must be a 3-letter code.");
         return ModelState.IsValid;
     }
 
-    private static NormalizedTripRequest NormalizeRequest(CreateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl));
-    private static NormalizedTripRequest NormalizeRequest(UpdateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl));
+    private static NormalizedTripRequest NormalizeRequest(CreateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl), NormalizeCurrencyCode(request.CurrencyCode));
+    private static NormalizedTripRequest NormalizeRequest(UpdateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl), NormalizeCurrencyCode(request.CurrencyCode));
     private static string? NormalizeOptionalString(string? value) { var trimmedValue = value?.Trim(); return string.IsNullOrEmpty(trimmedValue) ? null : trimmedValue; }
+    private static string NormalizeCurrencyCode(string currencyCode) => currencyCode.Trim().ToUpperInvariant();
     private static string GenerateShareToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)).Replace("+", "-").Replace("/", "_").TrimEnd('=');
     private string BuildShareUrl(string token) => $"{Request.Scheme}://{Request.Host}/share/{token}";
 
-    private static TripSummaryResponse ToSummaryResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared);
-    private static TripDetailResponse ToDetailResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared, trip.PublicShareToken, trip.Steps.OrderBy(step => step.OrderIndex).Select(ToStepResponse).ToList());
-    private static TripStepResponse ToStepResponse(TripStep step) => new(step.Id, step.TripId, step.Title, step.Description, step.Type, step.Status, step.ScheduledAt, step.GoogleMapsUrl, step.ExternalUrl, DeserializeImageUrls(step.ImageUrlsJson), step.OrderIndex, step.CreatedAt, step.UpdatedAt);
+    private static TripSummaryResponse ToSummaryResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared);
+    private static TripDetailResponse ToDetailResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared, trip.PublicShareToken, trip.Steps.OrderBy(step => step.OrderIndex).Select(ToStepResponse).ToList());
+    private static TripStepResponse ToStepResponse(TripStep step) => new(step.Id, step.TripId, step.Title, step.Description, step.Type, step.Status, step.ScheduledAt, step.CostAmount, step.GoogleMapsUrl, step.ExternalUrl, DeserializeImageUrls(step.ImageUrlsJson), step.OrderIndex, step.CreatedAt, step.UpdatedAt);
     private static IReadOnlyList<string> DeserializeImageUrls(string? value) => string.IsNullOrWhiteSpace(value) ? [] : (JsonSerializer.Deserialize<List<string>>(value) ?? []);
 
-    private sealed record NormalizedTripRequest(string Title, string Destination, string? Description, DateOnly? StartDate, DateOnly? EndDate, string? CoverImageUrl);
+    private sealed record NormalizedTripRequest(string Title, string Destination, string? Description, DateOnly? StartDate, DateOnly? EndDate, string? CoverImageUrl, string CurrencyCode);
 }

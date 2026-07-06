@@ -1,0 +1,41 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tripflow-api
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=tripflow;Username=postgres;Password=postgres
+      FrontendUrl: http://localhost:5173
+      Jwt__Issuer: TripFlow.Development
+      Jwt__Audience: TripFlow.Development
+      Jwt__SigningKey: sdfjhkgtkjlegrtjwkert-rewthjberwhtjewhtrtwert
+      Jwt__ExpirationMinutes: 120
+      BlobStorage__ConnectionString: ""
+      BlobStorage__ContainerName: tripflow-images
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: tripflow-postgres
+    environment:
+      POSTGRES_DB: tripflow
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - tripflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tripflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tripflow_pgdata:

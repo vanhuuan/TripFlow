@@ -1,4 +1,4 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,12 +15,19 @@ public class FilesController(IFileStorageService fileStorageService, ILogger<Fil
     [HttpPost("upload")]
     [RequestSizeLimit(MaxFileSizeBytes)]
     public async Task<ActionResult<FileUploadResponse>> Upload(
+        [FromQuery] string kind,
         IFormFile? file,
         CancellationToken cancellationToken)
     {
         if (file is null)
         {
             ModelState.AddModelError(nameof(file), "File is required.");
+            return ValidationProblem(ModelState);
+        }
+
+        if (!Enum.TryParse<ImageUploadKind>(kind, true, out var uploadKind))
+        {
+            ModelState.AddModelError(nameof(kind), "Upload kind is invalid.");
             return ValidationProblem(ModelState);
         }
 
@@ -44,7 +51,7 @@ public class FilesController(IFileStorageService fileStorageService, ILogger<Fil
 
         try
         {
-            var url = await fileStorageService.SaveImageAsync(file, cancellationToken);
+            var url = await fileStorageService.SaveImageAsync(file, uploadKind, cancellationToken);
             return Ok(new FileUploadResponse(url));
         }
         catch (Exception ex)

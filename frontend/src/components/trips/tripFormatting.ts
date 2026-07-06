@@ -20,6 +20,19 @@ export function formatDate(date: string) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${date}T00:00:00`));
 }
 
+export function formatMoney(amount: string | number | null, currencyCode: string) {
+  if (amount === null || amount === "") {
+    return "No cost";
+  }
+
+  const numericAmount = typeof amount === "number" ? amount : Number(amount);
+  if (!Number.isFinite(numericAmount)) {
+    return "No cost";
+  }
+
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode }).format(numericAmount);
+}
+
 export function statusClassName(status: TripStatus) {
   switch (status) {
     case "Active":

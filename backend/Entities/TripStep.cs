@@ -10,6 +10,7 @@ public class TripStep
     public TripStepType Type { get; set; }
     public TripStepStatus Status { get; set; }
     public DateTimeOffset? ScheduledAt { get; set; }
+    public decimal? CostAmount { get; set; }
     public string? GoogleMapsUrl { get; set; }
     public string? ExternalUrl { get; set; }
     public string? ImageUrlsJson { get; set; }
