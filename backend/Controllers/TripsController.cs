@@ -16,7 +16,8 @@ namespace backend.Controllers;
 [Route("api/[controller]")]
 public class TripsController(
     AppDbContext dbContext,
-    ICurrentUserService currentUserService) : ControllerBase
+    ICurrentUserService currentUserService,
+    IConfiguration configuration) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<TripDetailResponse>> Create(CreateTripRequest request, CancellationToken cancellationToken)
@@ -168,7 +169,12 @@ public class TripsController(
     private static string? NormalizeOptionalString(string? value) { var trimmedValue = value?.Trim(); return string.IsNullOrEmpty(trimmedValue) ? null : trimmedValue; }
     private static string NormalizeCurrencyCode(string currencyCode) => currencyCode.Trim().ToUpperInvariant();
     private static string GenerateShareToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)).Replace("+", "-").Replace("/", "_").TrimEnd('=');
-    private string BuildShareUrl(string token) => $"{Request.Scheme}://{Request.Host}/share/{token}";
+    private string BuildShareUrl(string token)
+    {
+        var frontendUrl = configuration["FrontendUrl"]?.TrimEnd('/');
+        var baseUrl = string.IsNullOrWhiteSpace(frontendUrl) ? $"{Request.Scheme}://{Request.Host}" : frontendUrl;
+        return $"{baseUrl}/share/{token}";
+    }
 
     private static TripSummaryResponse ToSummaryResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared);
     private static TripDetailResponse ToDetailResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared, trip.PublicShareToken, trip.Steps.OrderBy(step => step.OrderIndex).Select(ToStepResponse).ToList());
