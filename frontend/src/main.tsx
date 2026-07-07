@@ -1,13 +1,15 @@
-import { StrictMode } from "react";
+﻿import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { PublicOnlyRoute } from "./auth/PublicOnlyRoute";
+import { I18nProvider } from "./i18n";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EditTripPage } from "./pages/EditTripPage";
 import { EditTripStepPage } from "./pages/EditTripStepPage";
 import { FocusModePage } from "./pages/FocusModePage";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewTripPage } from "./pages/NewTripPage";
 import { NewTripStepPage } from "./pages/NewTripStepPage";
@@ -22,7 +24,7 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <LandingPage /> },
       { path: "share/:token", element: <PublicTripPage /> },
       {
         element: <PublicOnlyRoute />,
@@ -50,6 +52,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <I18nProvider>
+      <RouterProvider router={router} />
+    </I18nProvider>
   </StrictMode>,
 );

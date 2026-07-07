@@ -1,11 +1,13 @@
-import { CalendarPlus, MapPinned, PlaneTakeoff } from "lucide-react";
+﻿import { CalendarPlus, MapPinned, PlaneTakeoff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getTrips, type TripSummary } from "../api/trips";
+import { useI18n } from "../i18n";
 import { PageHeader } from "../components/PageHeader";
-import { formatDateRange, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
+import { formatDateRange, resolveAssetUrl, statusClassName, statusLabel } from "../components/trips/tripFormatting";
 
 export function DashboardPage() {
+  const { locale, t } = useI18n();
   const [trips, setTrips] = useState<TripSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export function DashboardPage() {
       })
       .catch(() => {
         if (isMounted) {
-          setError("Trips could not be loaded.");
+          setError(t("common.tripCouldNotBeLoaded"));
         }
       })
       .finally(() => {
@@ -34,76 +36,80 @@ export function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const activeTrip = trips.find((trip) => trip.status === "Active");
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader eyebrow="Workspace" title="Trip dashboard" description="View draft, active, and completed trips." />
-        <Link className="inline-flex items-center gap-2 rounded bg-coast px-4 py-2 font-semibold text-white" to="/trips/new">
+    <section className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeader eyebrow={t("dashboard.eyebrow")} title={t("dashboard.title")} description={t("dashboard.description")} />
+        <Link className="button-primary pressable active:scale-[0.96]" to="/trips/new">
           <CalendarPlus size={18} aria-hidden="true" />
-          Create trip
+          {t("dashboard.createTrip")}
         </Link>
       </div>
 
-      {error ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
       {activeTrip ? (
-        <div className="overflow-hidden rounded border border-teal-100 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+        <div className="surface-card overflow-hidden">
+          <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="space-y-2">
               <div className="flex items-center gap-3 text-coast">
                 <MapPinned size={22} aria-hidden="true" />
-                <h2 className="text-base font-semibold">Active trip</h2>
+                <h2 className="text-base font-semibold text-balance">{t("dashboard.activeTrip")}</h2>
               </div>
-              <p className="mt-2 font-semibold">{activeTrip.title}</p>
+              <p className="text-lg font-semibold text-ink">{activeTrip.title}</p>
               <p className="text-sm text-stone-600">{activeTrip.destination}</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link to={`/trips/${activeTrip.id}`} className="inline-flex items-center justify-center rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50">
-                Trip details
+              <Link to={`/trips/${activeTrip.id}`} className="button-secondary pressable active:scale-[0.96]">
+                {t("dashboard.tripDetails")}
               </Link>
-              <Link to={`/trips/${activeTrip.id}/focus`} className="inline-flex items-center justify-center rounded bg-coast px-4 py-2 font-semibold text-white">
-                Continue trip
+              <Link to={`/trips/${activeTrip.id}/focus`} className="button-primary pressable active:scale-[0.96]">
+                {t("dashboard.continueTrip")}
               </Link>
             </div>
           </div>
         </div>
       ) : null}
 
-      {isLoading ? <div className="rounded border border-stone-200 bg-white p-5 text-sm text-stone-600 shadow-sm">Loading trips...</div> : null}
+      {isLoading ? <div className="surface-card px-5 py-4 text-sm text-stone-600">{t("common.loadingTrips")}</div> : null}
 
       {!isLoading && trips.length === 0 ? (
-        <div className="rounded border border-dashed border-coast bg-white p-6 text-center shadow-sm">
-          <PlaneTakeoff className="mx-auto text-coast" size={28} aria-hidden="true" />
-          <h2 className="mt-3 text-base font-semibold">No trips yet</h2>
-          <p className="mt-2 text-sm text-stone-600">Create your first trip to start planning.</p>
-          <Link className="mt-4 inline-flex rounded bg-coast px-4 py-2 font-semibold text-white" to="/trips/new">
-            Create trip
+        <div className="surface-card flex flex-col items-center justify-center px-6 py-10 text-center">
+          <PlaneTakeoff className="text-coast" size={32} aria-hidden="true" />
+          <h2 className="mt-4 text-xl font-semibold text-ink">{t("dashboard.noTripsYet")}</h2>
+          <p className="mt-2 max-w-md text-sm text-stone-600">{t("dashboard.createFirstTrip")}</p>
+          <Link className="button-primary pressable mt-5 active:scale-[0.96]" to="/trips/new">
+            {t("dashboard.createTrip")}
           </Link>
         </div>
       ) : null}
 
       {!isLoading && trips.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {trips.map((trip) => {
             const coverUrl = resolveAssetUrl(trip.coverImageUrl);
             return (
-              <Link key={trip.id} to={`/trips/${trip.id}`} className="overflow-hidden rounded border border-stone-200 bg-white shadow-sm transition hover:border-coast">
-                <div className="h-36 bg-stone-100">
-                  {coverUrl ? <img className="h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">No cover image</div>}
+              <Link key={trip.id} to={`/trips/${trip.id}`} className="surface-card pressable group overflow-hidden active:scale-[0.99]">
+                <div className="relative h-40 bg-stone-100">
+                  {coverUrl ? (
+                    <img className="image-outline h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" src={coverUrl} alt="" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-stone-500">{t("common.noCoverImage")}</div>
+                  )}
                 </div>
-                <div className="space-y-3 p-4">
+                <div className="space-y-3 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h2 className="font-semibold">{trip.title}</h2>
+                      <h2 className="text-lg font-semibold text-ink text-balance">{trip.title}</h2>
                       <p className="text-sm text-stone-600">{trip.destination}</p>
                     </div>
-                    <span className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ring-1 ${statusClassName(trip.status)}`}>{trip.status}</span>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusClassName(trip.status)}`}>{statusLabel(trip.status, locale)}</span>
                   </div>
-                  <p className="text-sm text-stone-600">{formatDateRange(trip.startDate, trip.endDate)}</p>
+                  <p className="text-sm text-stone-600">{formatDateRange(trip.startDate, trip.endDate, locale)}</p>
                 </div>
               </Link>
             );

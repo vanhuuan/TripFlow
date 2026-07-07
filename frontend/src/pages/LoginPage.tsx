@@ -1,16 +1,10 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/AuthContext";
+import { useI18n } from "../i18n";
 import { PageHeader } from "../components/PageHeader";
-
-const loginSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address."),
-  password: z.string().min(1, "Password is required."),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
 
 type LocationState = {
   from?: {
@@ -18,20 +12,27 @@ type LocationState = {
   };
 };
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error !== null && "response" in error) {
     const response = (error as { response?: { data?: { message?: string } } }).response;
-    return response?.data?.message ?? "Login failed. Check your email and password.";
+    return response?.data?.message ?? fallback;
   }
 
-  return "Login failed. Check your email and password.";
+  return fallback;
 }
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { t } = useI18n();
   const [serverError, setServerError] = useState<string | null>(null);
+  const loginSchema = z.object({
+    email: z.string().trim().email(t("common.invalidEmail")),
+    password: z.string().min(1, t("common.passwordRequired")),
+  });
+  type LoginFormValues = z.infer<typeof loginSchema>;
+
   const {
     register,
     handleSubmit,
@@ -62,43 +63,31 @@ export function LoginPage() {
       await login(parsedValues.data.email, parsedValues.data.password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      setServerError(getErrorMessage(error));
+      setServerError(getErrorMessage(error, t("common.loginFailed")));
     }
   }
 
   return (
-    <section className="max-w-md space-y-6">
-      <PageHeader eyebrow="Access" title="Login" description="Sign in to manage your trips and itinerary steps." />
-      <form className="space-y-4 rounded border border-stone-200 bg-white p-5 shadow-sm" onSubmit={handleSubmit(onSubmit)}>
-        {serverError ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{serverError}</p> : null}
+    <section className="mx-auto max-w-md space-y-6">
+      <PageHeader eyebrow={t("auth.access")} title={t("auth.loginTitle")} description={t("auth.loginDescription")} />
+      <form className="surface-card space-y-4 p-5 sm:p-6" onSubmit={handleSubmit(onSubmit)}>
+        {serverError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{serverError}</p> : null}
         <label className="block text-sm font-medium">
-          Email
-          <input
-            className="mt-1 w-full rounded border border-stone-300 px-3 py-2"
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
-            {...register("email")}
-          />
-          {errors.email ? <span className="mt-1 block text-sm text-red-600">{errors.email.message}</span> : null}
+          {t("auth.email")}
+          <input className="form-input mt-1.5" type="email" placeholder="you@example.com" autoComplete="email" {...register("email")} />
+          {errors.email ? <span className="mt-1.5 block text-sm text-red-600">{errors.email.message}</span> : null}
         </label>
         <label className="block text-sm font-medium">
-          Password
-          <input
-            className="mt-1 w-full rounded border border-stone-300 px-3 py-2"
-            type="password"
-            placeholder="********"
-            autoComplete="current-password"
-            {...register("password")}
-          />
-          {errors.password ? <span className="mt-1 block text-sm text-red-600">{errors.password.message}</span> : null}
+          {t("auth.password")}
+          <input className="form-input mt-1.5" type="password" placeholder="********" autoComplete="current-password" {...register("password")} />
+          {errors.password ? <span className="mt-1.5 block text-sm text-red-600">{errors.password.message}</span> : null}
         </label>
-        <button className="w-full rounded bg-coast px-4 py-2 font-semibold text-white disabled:opacity-60" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Logging in..." : "Login"}
+        <button className="button-primary pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? t("auth.loggingIn") : t("auth.loginButton")}
         </button>
       </form>
-      <Link className="text-sm font-medium text-coast" to="/signup">
-        Create an account
+      <Link className="inline-flex text-sm font-medium text-coast underline-offset-4 hover:underline" to="/signup">
+        {t("auth.createAnAccount")}
       </Link>
     </section>
   );

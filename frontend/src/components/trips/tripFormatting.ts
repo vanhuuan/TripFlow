@@ -1,36 +1,42 @@
-import type { TripStatus } from "../../api/trips";
+﻿import type { TripStatus } from "../../api/trips";
+import { getLocaleCode, getMessage, getStatusLabel, type Locale } from "../../i18n";
 
-export function formatDateRange(startDate: string | null, endDate: string | null) {
+export function formatDateRange(startDate: string | null, endDate: string | null, locale: Locale = "vi") {
   if (!startDate && !endDate) {
-    return "Dates not set";
+    return getMessage(locale, "common.datesNotSet");
   }
 
   if (startDate && endDate) {
-    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    return `${formatDate(startDate, locale)} - ${formatDate(endDate, locale)}`;
   }
 
-  return formatDate(startDate ?? endDate ?? "");
+  return formatDate(startDate ?? endDate ?? "", locale);
 }
 
-export function formatDate(date: string) {
+export function formatDate(date: string, locale: Locale = "vi") {
   if (!date) {
-    return "Date not set";
+    return getMessage(locale, "common.dateNotSet");
   }
 
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${date}T00:00:00`));
+  return new Intl.DateTimeFormat(getLocaleCode(locale), { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${date}T00:00:00`));
 }
 
-export function formatMoney(amount: string | number | null, currencyCode: string) {
+export function formatMoney(amount: string | number | null, currencyCode: string, locale: Locale = "vi") {
   if (amount === null || amount === "") {
-    return "No cost";
+    return getMessage(locale, "common.noCost");
   }
 
   const numericAmount = typeof amount === "number" ? amount : Number(amount);
   if (!Number.isFinite(numericAmount)) {
-    return "No cost";
+    return getMessage(locale, "common.noCost");
   }
 
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode }).format(numericAmount);
+  const normalizedCurrencyCode = currencyCode.trim().toUpperCase();
+  try {
+    return new Intl.NumberFormat(getLocaleCode(locale), { style: "currency", currency: normalizedCurrencyCode }).format(numericAmount);
+  } catch {
+    return `${numericAmount.toLocaleString(getLocaleCode(locale))} ${normalizedCurrencyCode}`;
+  }
 }
 
 export function statusClassName(status: TripStatus) {
@@ -43,6 +49,10 @@ export function statusClassName(status: TripStatus) {
     default:
       return "bg-amber-50 text-amber-700 ring-amber-100";
   }
+}
+
+export function statusLabel(status: TripStatus, locale: Locale = "vi") {
+  return getStatusLabel(locale, status);
 }
 
 export function resolveAssetUrl(url: string | null) {

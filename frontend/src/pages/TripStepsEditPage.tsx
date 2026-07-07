@@ -1,4 +1,4 @@
-import { CheckCircle2, Edit, GripVertical, Save, Trash2, X } from "lucide-react";
+﻿import { CheckCircle2, Edit, GripVertical, Save, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
@@ -17,7 +17,7 @@ import {
 } from "../api/trips";
 import { PageHeader } from "../components/PageHeader";
 import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
-import { formatDateRange, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
+import { formatDateRange, formatMoney, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
 
 type Draft = {
   title: string;
@@ -113,7 +113,7 @@ function validateDraft(draft: Draft) {
   return null;
 }
 
-function StepSummary({ draft, isDirty }: { draft: Draft; isDirty: boolean }) {
+function StepSummary({ draft, isDirty, currencyCode }: { draft: Draft; isDirty: boolean; currencyCode: string }) {
   const scheduledText = asText(draft.scheduledAt);
   const scheduledLabel = scheduledText ? new Date(scheduledText).toLocaleString() : "Unscheduled";
 
@@ -126,7 +126,7 @@ function StepSummary({ draft, isDirty }: { draft: Draft; isDirty: boolean }) {
       </div>
       <div className="min-w-0">
         <p className="font-semibold text-ink">{asText(draft.title) || "Untitled step"}</p>
-        {asText(draft.costAmount).trim() ? <p className="mt-1 text-sm text-stone-600">Cost: {asText(draft.costAmount)}</p> : null}
+        {asText(draft.costAmount).trim() ? <p className="mt-1 text-sm text-stone-600">Cost: {formatMoney(draft.costAmount, currencyCode)}</p> : null}
         {asText(draft.description).trim() ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{asText(draft.description)}</p> : <p className="mt-1 text-sm text-stone-500">No description.</p>}
         {draft.imageUrls.length > 0 ? <TripStepImageCarousel className="max-w-[180px]" imageUrls={draft.imageUrls} altPrefix={draft.title || "Step"} variant="compact" /> : null}
       </div>
@@ -155,6 +155,7 @@ function StepEditor({
   onDragStart,
   onDragEnd,
   isMutating,
+  currencyCode,
 }: {
   draft: Draft;
   onChange: (next: Draft) => void;
@@ -164,9 +165,11 @@ function StepEditor({
   onDragStart: () => void;
   onDragEnd: () => void;
   isMutating: boolean;
+  currencyCode: string;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const costPreview = asText(draft.costAmount).trim() ? formatMoney(draft.costAmount, currencyCode) : `Enter an amount in ${currencyCode}`;
 
   async function handleImageSelection(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -214,8 +217,9 @@ function StepEditor({
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" type="datetime-local" value={draft.scheduledAt} onChange={(event) => onChange({ ...draft, scheduledAt: event.target.value })} />
         </label>
         <label className="block text-sm font-medium">
-          Cost
+          Cost ({currencyCode})
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" inputMode="decimal" type="number" min="0" step="0.01" value={draft.costAmount} onChange={(event) => onChange({ ...draft, costAmount: event.target.value })} />
+          <span className="mt-1 block text-xs text-stone-500">Preview: {costPreview}</span>
         </label>
       </div>
       <label className="block text-sm font-medium">
@@ -238,12 +242,7 @@ function StepEditor({
             draft.imageUrls.map((url, index) => (
               <div key={`${url}-${index}`} className="relative">
                 <img className="h-20 w-20 rounded object-cover ring-1 ring-stone-200" src={imagePreview(url)} alt="Current image" />
-                <button
-                  type="button"
-                  className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-stone-700 shadow hover:bg-white"
-                  onClick={() => removeImage(url)}
-                  aria-label="Remove image"
-                >
+                <button type="button" className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-stone-700 shadow hover:bg-white" onClick={() => removeImage(url)} aria-label="Remove image">
                   <X size={14} aria-hidden="true" />
                 </button>
               </div>
@@ -254,43 +253,25 @@ function StepEditor({
         </div>
         <label className="block text-sm font-medium">
           Select images
-          <input
-            className="mt-1 w-full rounded border border-stone-300 px-3 py-2 text-sm"
-            type="file"
-            multiple
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => void handleImageSelection(event.target.files)}
-            disabled={isUploading || isMutating}
-          />
+          <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2 text-sm" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => void handleImageSelection(event.target.files)} disabled={isUploading || isMutating} />
         </label>
-        {uploadError ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{uploadError}</p> : null}
+        {uploadError ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{uploadError}</p> : null}
         {isUploading ? <p className="text-sm text-stone-500">Uploading images...</p> : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="inline-flex cursor-grab items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50 active:cursor-grabbing"
-          draggable
-          onDragStart={(event) => {
-            event.dataTransfer.effectAllowed = "move";
-            event.dataTransfer.setData("text/plain", draft.title || "step");
-            onDragStart();
-          }}
-          onDragEnd={onDragEnd}
-          title="Drag to reorder"
-        >
+        <button type="button" className="button-secondary pressable cursor-grab px-3 py-2 text-sm active:cursor-grabbing" draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", draft.title || "step"); onDragStart(); }} onDragEnd={onDragEnd} title="Drag to reorder">
           <GripVertical size={16} aria-hidden="true" />
           Drag
         </button>
-        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={onDone} disabled={isMutating || isUploading}>
+        <button type="button" className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={onDone} disabled={isMutating || isUploading}>
           <Save size={16} aria-hidden="true" />
           Done
         </button>
-        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={onCancel} disabled={isMutating || isUploading}>
+        <button type="button" className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={onCancel} disabled={isMutating || isUploading}>
           <X size={16} aria-hidden="true" />
           Cancel
         </button>
-        <button type="button" className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={onDelete} disabled={isMutating || isUploading}>
+        <button type="button" className="button-danger pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={onDelete} disabled={isMutating || isUploading}>
           <Trash2 size={16} aria-hidden="true" />
           Delete
         </button>
@@ -427,7 +408,7 @@ export function TripStepsEditPage() {
 
     setIsSaving(true);
     setError(null);
-    let nextCards = [...cards];
+    const nextCards = [...cards];
 
     try {
       for (let index = 0; index < nextCards.length; index++) {
@@ -478,16 +459,45 @@ export function TripStepsEditPage() {
     }
   }
 
+  async function handleStartTrip() {
+    if (!tripId) return;
+
+    setIsSaving(true);
+    try {
+      const startedTrip = await startTrip(tripId);
+      setTrip(startedTrip);
+      setError(null);
+    } catch {
+      setError("Trip could not be started.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleCompleteTrip() {
+    if (!tripId) return;
+
+    setIsSaving(true);
+    try {
+      const completedTrip = await completeTrip(tripId);
+      setTrip(completedTrip);
+      setError(null);
+    } catch {
+      setError("Trip could not be completed.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
   if (isLoading) {
-    return <div className="rounded border border-stone-200 bg-white p-5 text-sm text-stone-600 shadow-sm">Loading steps...</div>;
+    return <div className="surface-card px-5 py-4 text-sm text-stone-600">Loading steps...</div>;
   }
 
   if (!tripId || !trip) {
     return (
-      <section className="space-y-6">
+      <section className="space-y-8">
         <PageHeader eyebrow="Itinerary" title="Step list not found" description="The trip could not be loaded for step editing." />
-        {error ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-        <Link className="inline-flex rounded bg-coast px-4 py-2 font-semibold text-white" to="/dashboard">
+        {error ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+        <Link className="button-primary pressable active:scale-[0.96]" to="/dashboard">
           Back to dashboard
         </Link>
       </section>
@@ -497,55 +507,55 @@ export function TripStepsEditPage() {
   const coverUrl = resolveAssetUrl(trip.coverImageUrl);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader eyebrow="Itinerary" title="Edit steps" description={trip.title} />
-        <span className={`w-fit rounded px-2 py-1 text-xs font-semibold ring-1 ${statusClassName(trip.status)}`}>{trip.status}</span>
+        <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusClassName(trip.status)}`}>{trip.status}</span>
       </div>
 
-      {error ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="overflow-hidden rounded border border-stone-200 bg-white shadow-sm">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="surface-card overflow-hidden">
           <div className="h-56 bg-stone-100">
-            {coverUrl ? <img className="h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">No cover image</div>}
+            {coverUrl ? <img className="image-outline h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">No cover image</div>}
           </div>
           <div className="space-y-4 p-5">
             <div>
               <h2 className="text-base font-semibold">Trip information</h2>
               <p className="mt-1 text-sm text-stone-600">{formatDateRange(trip.startDate, trip.endDate)}</p>
             </div>
-            {trip.description ? <p className="whitespace-pre-wrap text-sm text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">No description yet.</p>}
+            {trip.description ? <p className="whitespace-pre-wrap text-sm leading-7 text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">No description yet.</p>}
           </div>
         </div>
 
-        <div className="space-y-3 rounded border border-stone-200 bg-white p-5 shadow-sm">
-          <button className="flex w-full items-center justify-center gap-2 rounded bg-coast px-4 py-2 font-semibold text-white disabled:opacity-60" type="button" onClick={() => void startTrip(trip.id)} disabled={isSaving || trip.status === "Active"}>
+        <div className="surface-card space-y-3 p-5">
+          <button className="button-primary pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void handleStartTrip()} disabled={isSaving || trip.status === "Active"}>
             <CheckCircle2 size={18} aria-hidden="true" />
             Start trip
           </button>
-          <button className="flex w-full items-center justify-center gap-2 rounded bg-ink px-4 py-2 font-semibold text-white disabled:opacity-60" type="button" onClick={() => void completeTrip(trip.id)} disabled={isSaving || trip.status === "Completed"}>
+          <button className="button-ghost pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void handleCompleteTrip()} disabled={isSaving || trip.status === "Completed"}>
             <CheckCircle2 size={18} aria-hidden="true" />
             Complete trip
           </button>
-          <Link className="flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50" to={`/trips/${trip.id}`}>
+          <Link className="button-secondary pressable w-full active:scale-[0.96]" to={`/trips/${trip.id}`}>
             Back to trip
           </Link>
         </div>
       </div>
 
-      <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
+      <div className="surface-card p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold">Step list editor</h2>
             <p className="mt-1 text-sm text-stone-600">Add a step to append a new editable card. Reorder locally, then save all changes together.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50 disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
+            <button className="button-secondary pressable active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
               <Edit size={16} aria-hidden="true" />
               Add step
             </button>
-            <button className="inline-flex items-center justify-center gap-2 rounded bg-coast px-4 py-2 font-semibold text-white disabled:opacity-60" type="button" onClick={() => void saveAllChanges()} disabled={isSaving || !hasUnsavedChanges}>
+            <button className="button-primary pressable active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void saveAllChanges()} disabled={isSaving || !hasUnsavedChanges}>
               <Save size={16} aria-hidden="true" />
               {isSaving ? "Saving..." : "Save all changes"}
             </button>
@@ -555,7 +565,7 @@ export function TripStepsEditPage() {
         {cards.length === 0 ? (
           <div className="mt-5 rounded border border-dashed border-stone-200 p-4">
             <p className="text-sm text-stone-500">No itinerary steps yet.</p>
-            <button className="mt-3 inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" type="button" onClick={addDraftCard} disabled={isSaving}>
+            <button className="mt-3 button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" type="button" onClick={addDraftCard} disabled={isSaving}>
               <Edit size={16} aria-hidden="true" />
               Add your first step
             </button>
@@ -566,7 +576,7 @@ export function TripStepsEditPage() {
               {cards.map((card) => (
                 <li
                   key={card.clientId}
-                  className={`rounded border border-stone-200 p-4 ${draggingCardId === card.clientId ? "border-coast bg-teal-50/20" : ""}`}
+                  className={`rounded-[1.25rem] border border-stone-200 bg-white p-4 shadow-sm ${draggingCardId === card.clientId ? "border-coast bg-teal-50/20" : ""}`}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
                     event.preventDefault();
@@ -585,12 +595,13 @@ export function TripStepsEditPage() {
                       onDragStart={() => setDraggingCardId(card.clientId)}
                       onDragEnd={() => setDraggingCardId(null)}
                       isMutating={isSaving}
+                      currencyCode={trip.currencyCode}
                     />
                   ) : (
                     <>
-                      <StepSummary draft={card.draft} isDirty={isDraftDirty(card) || card.serverId === null} />
+                      <StepSummary draft={card.draft} isDirty={isDraftDirty(card) || card.serverId === null} currencyCode={trip.currencyCode} />
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <button type="button" className="inline-flex items-center gap-2 rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" onClick={() => updateCard(card.clientId, (current) => ({ ...current, isEditing: true }))} disabled={isSaving}>
+                        <button type="button" className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={() => updateCard(card.clientId, (current) => ({ ...current, isEditing: true }))} disabled={isSaving}>
                           <Edit size={16} aria-hidden="true" />
                           Edit
                         </button>
@@ -610,7 +621,7 @@ export function TripStepsEditPage() {
                           <GripVertical size={16} aria-hidden="true" />
                           Drag
                         </button>
-                        <button type="button" className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void deleteCard(card)} disabled={isSaving}>
+                        <button type="button" className="button-danger pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={() => void deleteCard(card)} disabled={isSaving}>
                           <Trash2 size={16} aria-hidden="true" />
                           Delete
                         </button>
@@ -621,7 +632,7 @@ export function TripStepsEditPage() {
               ))}
             </ol>
             <div className="mt-5 flex justify-end">
-              <button className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-2 font-semibold text-ink hover:bg-stone-50 disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
+              <button className="button-secondary pressable active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
                 <Edit size={16} aria-hidden="true" />
                 Add step
               </button>
@@ -632,3 +643,7 @@ export function TripStepsEditPage() {
     </section>
   );
 }
+
+
+
+

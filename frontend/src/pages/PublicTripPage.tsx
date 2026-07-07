@@ -1,7 +1,8 @@
-import { CheckCircle2, ExternalLink, EyeOff, Image as ImageIcon, MapPinned } from "lucide-react";
+﻿import { CheckCircle2, ExternalLink, EyeOff, MapPinned } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getPublicTrip, type PublicTripDetail, type TripStep } from "../api/trips";
+import { useI18n } from "../i18n";
 import { PageHeader } from "../components/PageHeader";
 import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
 import { formatMoney } from "../components/trips/tripFormatting";
@@ -20,6 +21,7 @@ function findCurrentStep(steps: TripStep[]) {
 
 export function PublicTripPage() {
   const { token } = useParams();
+  const { locale, t } = useI18n();
   const [trip, setTrip] = useState<PublicTripDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function PublicTripPage() {
       })
       .catch(() => {
         if (isMounted) {
-          setError("Shared trip could not be loaded.");
+          setError(t("common.sharedTripCouldNotBeLoaded"));
         }
       })
       .finally(() => {
@@ -52,21 +54,21 @@ export function PublicTripPage() {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [t, token]);
 
   const currentStep = useMemo(() => (trip ? findCurrentStep(trip.steps) : null), [trip]);
 
   if (isLoading) {
-    return <div className="rounded border border-stone-200 bg-white p-5 text-sm text-stone-600 shadow-sm">Loading shared trip...</div>;
+    return <div className="surface-card px-5 py-4 text-sm text-stone-600">{t("common.loadingSharedTrip")}</div>;
   }
 
   if (!trip) {
     return (
       <section className="space-y-6">
-        <PageHeader eyebrow="Shared trip" title="Trip not found" description="This shared link is invalid or disabled." />
-        {error ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-        <Link className="inline-flex rounded bg-coast px-4 py-2 font-semibold text-white" to="/dashboard">
-          Back to dashboard
+        <PageHeader eyebrow={t("publicTrip.eyebrow")} title={t("publicTrip.sharedTripNotFound")} description={t("publicTrip.sharedTripDescription")} />
+        {error ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+        <Link className="button-primary pressable active:scale-[0.96]" to="/dashboard">
+          {t("common.backToDashboard")}
         </Link>
       </section>
     );
@@ -79,19 +81,19 @@ export function PublicTripPage() {
   if (!currentStep) {
     return (
       <section className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <PageHeader eyebrow="Shared trip" title={trip.title} description={trip.destination} />
-          <span className="inline-flex items-center gap-2 rounded bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <PageHeader eyebrow={t("publicTrip.eyebrow")} title={trip.title} description={trip.destination} />
+          <span className="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
             <EyeOff size={16} aria-hidden="true" />
-            Read only
+            {t("publicTrip.readOnly")}
           </span>
         </div>
-        <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
+        <div className="surface-card p-5 sm:p-6">
           <div className="flex items-center gap-3 text-coast">
             <CheckCircle2 size={22} aria-hidden="true" />
-            <h2 className="text-base font-semibold">Trip complete</h2>
+            <h2 className="text-base font-semibold text-balance">{t("publicTrip.tripComplete")}</h2>
           </div>
-          <p className="mt-3 text-sm text-stone-600">All itinerary steps have been completed or skipped.</p>
+          <p className="mt-3 text-sm text-stone-600">{t("publicTrip.allItineraryStepsCompleted")}</p>
         </div>
       </section>
     );
@@ -100,74 +102,101 @@ export function PublicTripPage() {
   const TypeIcon = stepTypeIcon(currentStep.type);
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader eyebrow="Shared trip" title={trip.title} description={trip.destination} />
-        <span className="inline-flex items-center gap-2 rounded bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
+    <section className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <PageHeader eyebrow={t("publicTrip.eyebrow")} title={trip.title} description={trip.destination} />
+        <span className="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
           <EyeOff size={16} aria-hidden="true" />
-          Read only
+          {t("publicTrip.readOnly")}
         </span>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_320px]">
-        <div className="space-y-5">
-          <div className="overflow-hidden rounded border border-stone-200 bg-white shadow-sm">
-            <div className="h-56 bg-stone-100">
-              {coverUrl ? <img className="h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">No cover image</div>}
-            </div>
-            <div className="space-y-4 p-5">
-              <p className="text-sm text-stone-600">Estimated cost: {formatMoney(trip.totalCost, trip.currencyCode)}</p>
-              {trip.description ? <p className="whitespace-pre-wrap text-sm text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">No description yet.</p>}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_320px]">
+        <div className="space-y-6">
+          <div className="surface-card overflow-hidden">
+            <div className="h-56 bg-stone-100">{coverUrl ? <img className="image-outline h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">{t("common.noCoverImage")}</div>}</div>
+            <div className="space-y-4 p-5 sm:p-6">
+              <p className="text-sm text-stone-600">{t("publicTrip.estimatedCost")}: {formatMoney(trip.totalCost, trip.currencyCode, locale)}</p>
+              {trip.description ? <p className="whitespace-pre-wrap text-sm leading-7 text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">{t("common.noDescriptionYet")}</p>}
             </div>
           </div>
 
-          <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
+          <div className="surface-card p-5 sm:p-6">
             <div className="flex items-center gap-3 text-coast">
               <TypeIcon size={22} aria-hidden="true" />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{stepTypeLabel(currentStep.type)}</p>
-                <h2 className="text-xl font-semibold text-ink">{currentStep.title}</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">{stepTypeLabel(currentStep.type, locale)}</p>
+                <h2 className="text-balance text-2xl font-semibold text-ink">{currentStep.title}</h2>
               </div>
             </div>
-            <p className="mt-3 text-sm text-stone-600">{formatStepDateTime(currentStep.scheduledAt)}</p>
-            {currentStep.costAmount != null ? <p className="mt-2 text-sm text-stone-600">Cost: {formatMoney(currentStep.costAmount, trip.currencyCode)}</p> : null}
-            {currentStep.description ? <p className="mt-4 whitespace-pre-wrap text-sm text-stone-700">{currentStep.description}</p> : <p className="mt-4 text-sm text-stone-500">No description for this step.</p>}
+            <p className="mt-3 text-sm text-stone-600">{formatStepDateTime(currentStep.scheduledAt, locale)}</p>
+            {currentStep.costAmount != null ? <p className="mt-2 text-sm text-stone-600">{t("common.cost")}: {formatMoney(currentStep.costAmount, trip.currencyCode, locale)}</p> : null}
+            {currentStep.description ? <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-stone-700">{currentStep.description}</p> : <p className="mt-4 text-sm text-stone-500">{t("common.noDescriptionForThisStep")}</p>}
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {currentStep.googleMapsUrl ? (
-                <a className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-3 font-semibold text-ink hover:bg-stone-50" href={currentStep.googleMapsUrl} target="_blank" rel="noreferrer">
+                <a className="button-secondary pressable px-4 py-3 active:scale-[0.96]" href={currentStep.googleMapsUrl} target="_blank" rel="noreferrer">
                   <MapPinned size={18} aria-hidden="true" />
-                  Open Google Maps
+                  {t("common.openGoogleMaps")}
                 </a>
               ) : null}
               {currentStep.externalUrl ? (
-                <a className="inline-flex items-center justify-center gap-2 rounded border border-stone-300 px-4 py-3 font-semibold text-ink hover:bg-stone-50" href={currentStep.externalUrl} target="_blank" rel="noreferrer">
+                <a className="button-secondary pressable px-4 py-3 active:scale-[0.96]" href={currentStep.externalUrl} target="_blank" rel="noreferrer">
                   <ExternalLink size={18} aria-hidden="true" />
-                  Open link
+                  {t("common.openLink")}
                 </a>
               ) : null}
             </div>
             {currentStep.imageUrls.length > 0 ? <TripStepImageCarousel className="mt-5" imageUrls={currentStep.imageUrls} altPrefix={currentStep.title} /> : null}
           </div>
 
-          <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
-            <h3 className="text-base font-semibold text-ink">Upcoming steps</h3>
-            {upcomingSteps.length === 0 ? <p className="mt-3 text-sm text-stone-500">No more upcoming steps.</p> : <ol className="mt-4 space-y-3">{upcomingSteps.map((step) => { const Icon = stepTypeIcon(step.type); return (<li key={step.id} className="rounded border border-stone-200 p-4"><div className="flex items-start gap-3"><Icon size={18} className="mt-0.5 shrink-0 text-coast" aria-hidden="true" /><div><p className="font-medium text-ink">{step.title}</p><p className="mt-1 text-sm text-stone-600">{stepTypeLabel(step.type)}</p></div></div></li>); })}</ol>}
+          <div className="surface-card p-5 sm:p-6">
+            <h3 className="text-base font-semibold text-ink">{t("publicTrip.upcomingSteps")}</h3>
+            {upcomingSteps.length === 0 ? (
+              <p className="mt-3 text-sm text-stone-500">{t("publicTrip.noMoreUpcomingSteps")}</p>
+            ) : (
+              <ol className="mt-4 space-y-3">
+                {upcomingSteps.map((step) => {
+                  const Icon = stepTypeIcon(step.type);
+                  return (
+                    <li key={step.id} className="rounded-[1.25rem] border border-stone-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <Icon size={18} className="mt-0.5 shrink-0 text-coast" aria-hidden="true" />
+                        <div>
+                          <p className="font-medium text-ink">{step.title}</p>
+                          <p className="mt-1 text-sm text-stone-600">{stepTypeLabel(step.type, locale)}</p>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </div>
         </div>
 
-        <aside className="space-y-5">
-          <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
-            <h3 className="text-base font-semibold text-ink">Step summary</h3>
-            <p className="mt-2 text-sm text-stone-600">{trip.steps.length} total steps</p>
-            <p className="mt-1 text-sm text-stone-600">{completedSteps.length} completed or skipped</p>
+        <aside className="space-y-6">
+          <div className="surface-card p-5 sm:p-6">
+            <h3 className="text-base font-semibold text-ink">{t("publicTrip.stepSummary")}</h3>
+            <p className="mt-2 text-sm text-stone-600">{trip.steps.length} {t("publicTrip.totalSteps")}</p>
+            <p className="mt-1 text-sm text-stone-600">{completedSteps.length} {t("publicTrip.completedOrSkipped")}</p>
           </div>
-          <div className="rounded border border-stone-200 bg-white p-5 shadow-sm">
-            <h3 className="text-base font-semibold text-ink">Completed and skipped</h3>
-            {completedSteps.length === 0 ? <p className="mt-3 text-sm text-stone-500">Nothing here yet.</p> : <ol className="mt-4 space-y-3">{completedSteps.map((step) => (<li key={step.id} className="rounded border border-stone-200 p-3"><p className="font-medium text-ink">{step.title}</p><p className="mt-1 text-xs text-stone-500">{step.status}</p></li>))}</ol>}
+          <div className="surface-card p-5 sm:p-6">
+            <h3 className="text-base font-semibold text-ink">{t("publicTrip.completedOrSkipped")}</h3>
+            {completedSteps.length === 0 ? (
+              <p className="mt-3 text-sm text-stone-500">{t("publicTrip.nothingHereYet")}</p>
+            ) : (
+              <ol className="mt-4 space-y-3">
+                {completedSteps.map((step) => (
+                  <li key={step.id} className="rounded-[1rem] border border-stone-200 bg-white p-3 shadow-sm">
+                    <p className="font-medium text-ink">{step.title}</p>
+                    <p className="mt-1 text-xs text-stone-500">{step.status}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         </aside>
       </div>
     </section>
   );
 }
-

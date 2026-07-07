@@ -1,12 +1,13 @@
-import { MapPin, Hotel, BusFront, UtensilsCrossed, Sparkles, StickyNote } from "lucide-react";
+﻿import { BusFront, Hotel, MapPin, Sparkles, StickyNote, UtensilsCrossed } from "lucide-react";
 import type { TripStepStatus, TripStepType } from "../../api/trips";
+import { getLocaleCode, getMessage, getStepStatusLabel, getStepTypeLabel, type Locale } from "../../i18n";
 
-export function formatStepDateTime(value: string | null) {
+export function formatStepDateTime(value: string | null, locale: Locale = "vi") {
   if (!value) {
-    return "Unscheduled";
+    return getMessage(locale, "common.unscheduled");
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(getLocaleCode(locale), {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -27,8 +28,12 @@ export function stepStatusClassName(status: TripStepStatus) {
   }
 }
 
-export function stepTypeLabel(type: TripStepType) {
-  return type;
+export function stepStatusLabel(status: TripStepStatus, locale: Locale = "vi") {
+  return getStepStatusLabel(locale, status);
+}
+
+export function stepTypeLabel(type: TripStepType, locale: Locale = "vi") {
+  return getStepTypeLabel(locale, type);
 }
 
 export function stepTypeIcon(type: TripStepType) {
