@@ -117,16 +117,39 @@ export function LandingPage() {
               </span>
             </div>
 
-            <div className="relative grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+            <div className="relative grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
               <div className="space-y-4">
-                <div className="rounded-[1.85rem] bg-white/82 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_45px_rgba(15,23,42,0.08)] ring-1 ring-white/70">
-                  <img src="/resource.png" alt={t("landing.workspacePreview")} className="image-outline aspect-[16/10] w-full rounded-[1.4rem] object-cover" />
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-1 pb-1">
-                    <div>
-                      <p className="text-sm font-semibold text-ink">{t("landing.kyotoTitle")}</p>
-                      <p className="text-xs text-stone-500">{t("landing.kyotoDescription")}</p>
+                <div className="rounded-[1.9rem] bg-white/85 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_20px_50px_rgba(15,23,42,0.09)] ring-1 ring-white/75">
+                  <div className="relative overflow-hidden rounded-[1.45rem] bg-[linear-gradient(160deg,#f8fbfa_0%,#eff6f4_52%,#ffffff_100%)] p-5 sm:p-6">
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.16),transparent_35%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(9,30,63,0.08),transparent_40%)]" />
+                    <div className="relative flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">{t("landing.workspacePreview")}</p>
+                        <p className="mt-2 text-sm text-stone-600">{t("landing.workspaceSubtitle")}</p>
+                      </div>
+                      <span className="rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-coast ring-1 ring-teal-100">{t("landing.livePlanning")}</span>
                     </div>
-                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 ring-1 ring-stone-200">{t("landing.draftTrip")}</span>
+
+                    <div className="relative mt-6 grid place-items-center">
+                      <div className="absolute h-44 w-44 rounded-full bg-teal-200/30 blur-3xl" />
+                      <div className="absolute left-8 top-8 h-10 w-10 rounded-full bg-amber-200/55 blur-xl" />
+                      <div className="absolute right-10 top-10 h-8 w-8 rounded-full bg-slate-900/10 blur-lg" />
+                      <div className="relative flex h-36 w-36 items-center justify-center rounded-[2rem] bg-white/92 shadow-[0_18px_50px_rgba(15,23,42,0.12)] ring-1 ring-white/80">
+                        <img src="/resource.svg" alt={t("landing.workspacePreview")} className="h-24 w-24 object-contain" />
+                      </div>
+                    </div>
+
+                    <div className="relative mt-6 flex items-center justify-between gap-3 rounded-[1.2rem] bg-white/80 px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-white/80">
+                      <div>
+                        <p className="text-sm font-semibold text-ink">TripFlow</p>
+                        <p className="text-xs text-stone-500">{t("landing.heroDescription")}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#f5b34d]" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#6dc6b6]" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#091e3f]" />
+                      </div>
+                    </div>
                   </div>
                 </div>
 

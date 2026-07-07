@@ -17,7 +17,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const homeTo = isAuthenticated ? "/dashboard" : "/";
   const languageLabel = locale === "vi" ? "EN" : "VI";
-  const languageTitle = locale === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt";
+  const languageTitle = locale === "vi" ? "Chuyển sang Tiếng Anh" : "Switch to Vietnamese";
 
   const authenticatedLinks = [
     { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
@@ -36,7 +36,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className={isPublicSurface ? "mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10" : "mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10"}>
           <Link to={homeTo} className="flex items-center gap-3">
             <span className={isPublicSurface ? "flex h-12 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/70 bg-white/90 p-1 shadow-lg shadow-slate-950/10 ring-1 ring-slate-950/5" : "flex h-12 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-1 shadow-lg shadow-slate-950/20 ring-1 ring-white/10"}>
-              <img src="/resource.png" alt="TripFlow logo" className="h-full w-full object-contain" />
+              <img src="/resource.svg" alt="TripFlow logo" className="h-full w-full object-contain" />
             </span>
             <span>
               <span className={isPublicSurface ? "block text-lg font-semibold tracking-wide text-ink" : "block text-lg font-semibold tracking-wide"}>TripFlow</span>
@@ -132,3 +132,5 @@ export function AppLayout({ children }: AppLayoutProps) {
     </div>
   );
 }
+
+
