@@ -37,9 +37,23 @@ builder.Services.AddOptions<JwtSettings>()
     .Bind(builder.Configuration.GetSection(JwtSettings.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
-
 builder.Services.AddOptions<BlobStorageOptions>()
     .Bind(builder.Configuration.GetSection(BlobStorageOptions.SectionName));
+builder.Services.AddOptions<BlogBlobStorageOptions>()
+    .Bind(builder.Configuration.GetSection(BlogBlobStorageOptions.SectionName));
+builder.Services.AddOptions<OpenAISettings>()
+    .Bind(builder.Configuration.GetSection(OpenAISettings.SectionName));
+builder.Services.AddOptions<AnthropicSettings>()
+    .Bind(builder.Configuration.GetSection(AnthropicSettings.SectionName));
+builder.Services.AddOptions<GoogleAISettings>()
+    .Bind(builder.Configuration.GetSection(GoogleAISettings.SectionName));
+builder.Services.AddOptions<AISettings>()
+    .Bind(builder.Configuration.GetSection(AISettings.SectionName))
+    .ValidateDataAnnotations()
+    .Validate(settings => IsSupportedProvider(settings.Provider), "AI:Provider must be OpenAI, Anthropic, or Google.")
+    .Validate(settings => HasProviderApiKey(settings.Provider, builder.Configuration), "The configured AI provider requires its API key.")
+    .ValidateOnStart();
+builder.Services.AddHttpClient();
 
 builder.Services.AddCors(options =>
 {
@@ -79,6 +93,10 @@ builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IFileStorageService, AzureBlobFileStorageService>();
+builder.Services.AddScoped<IBlogStorageService, AzureBlobBlogStorageService>();
+builder.Services.AddSingleton<ITripBlogMarkdownSerializer, TripBlogMarkdownSerializer>();
+builder.Services.AddScoped<ITripBlogGenerationService, TripBlogGenerationService>();
+builder.Services.AddSingleton<IConfiguredBlogModel, ConfiguredBlogModel>();
 
 var app = builder.Build();
 
@@ -103,3 +121,13 @@ app.MapGet("/health", () => Results.Ok(new
 app.MapControllers();
 
 app.Run();
+
+static bool IsSupportedProvider(string? provider) => provider is "OpenAI" or "Anthropic" or "Google";
+
+static bool HasProviderApiKey(string? provider, IConfiguration configuration) => provider switch
+{
+    "OpenAI" => !string.IsNullOrWhiteSpace(configuration["OpenAI:ApiKey"]),
+    "Anthropic" => !string.IsNullOrWhiteSpace(configuration["Anthropic:ApiKey"]),
+    "Google" => !string.IsNullOrWhiteSpace(configuration["Google:ApiKey"]),
+    _ => false
+};

@@ -1,9 +1,19 @@
-import { apiClient } from "./client";
+﻿import { apiClient } from "./client";
 
 export type TripStatus = "Draft" | "Active" | "Completed";
 export type TripStepType = "Place" | "Transport" | "Hotel" | "Restaurant" | "Activity" | "Note";
 export type TripStepStatus = "Todo" | "Done" | "Skipped";
 export type ImageUploadKind = "TripCover" | "TripStep";
+
+export type TripMember = {
+  id: string;
+  name: string;
+};
+
+export type TripMemberPayload = {
+  id: string | null;
+  name: string;
+};
 
 export type TripStep = {
   id: string;
@@ -17,6 +27,7 @@ export type TripStep = {
   googleMapsUrl: string | null;
   externalUrl: string | null;
   imageUrls: string[];
+  participantMemberIds: string[];
   orderIndex: number;
   createdAt: string;
   updatedAt: string;
@@ -38,10 +49,32 @@ export type TripSummary = {
   isPublicShared: boolean;
 };
 
-export type TripDetail = TripSummary & { publicShareToken: string | null; steps: TripStep[] };
-export type PublicTripDetail = Pick<TripDetail, "id" | "title" | "destination" | "description" | "startDate" | "endDate" | "coverImageUrl" | "currencyCode" | "totalCost" | "steps">;
-export type TripPayload = { title: string; destination: string; description: string | null; startDate: string | null; endDate: string | null; coverImageUrl: string | null; currencyCode: string };
-export type TripStepPayload = { title: string; description: string | null; type: TripStepType; scheduledAt: string | null; costAmount: number | null; googleMapsUrl: string | null; externalUrl: string | null; imageUrls: string[] };
+export type TripDetail = TripSummary & { publicShareToken: string | null; members: TripMember[]; steps: TripStep[] };
+
+export type PublicTripStep = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: TripStepType;
+  status: TripStepStatus;
+  scheduledTime: string | null;
+  googleMapsUrl: string | null;
+  externalUrl: string | null;
+  imageUrls: string[];
+  orderIndex: number;
+};
+
+export type PublicTripDetail = {
+  id: string;
+  title: string;
+  destination: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  currencyCode: string;
+  steps: PublicTripStep[];
+};
+export type TripPayload = { title: string; destination: string; description: string | null; startDate: string | null; endDate: string | null; coverImageUrl: string | null; currencyCode: string; members: TripMemberPayload[] };
+export type TripStepPayload = { title: string; description: string | null; type: TripStepType; scheduledAt: string | null; costAmount: number | null; googleMapsUrl: string | null; externalUrl: string | null; imageUrls: string[]; participantMemberIds: string[] };
 
 export type ShareLinkResponse = { shareUrl: string; token: string };
 
@@ -136,3 +169,7 @@ export async function reorderTripSteps(tripId: string, stepIds: string[]) { retu
 export async function markTripStepDone(tripId: string, stepId: string) { return (await apiClient.post<TripStep>(`/api/trips/${tripId}/steps/${stepId}/done`)).data; }
 export async function skipTripStep(tripId: string, stepId: string) { return (await apiClient.post<TripStep>(`/api/trips/${tripId}/steps/${stepId}/skip`)).data; }
 export async function getPublicTrip(token: string) { return (await apiClient.get<PublicTripDetail>(`/api/public/trips/${token}`)).data; }
+
+
+
+

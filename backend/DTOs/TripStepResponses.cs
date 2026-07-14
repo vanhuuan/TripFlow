@@ -1,6 +1,10 @@
-using backend.Entities;
+﻿using backend.Entities;
 
 namespace backend.DTOs;
+
+public record TripMemberResponse(
+    Guid Id,
+    string Name);
 
 public record TripStepResponse(
     Guid Id,
@@ -14,6 +18,7 @@ public record TripStepResponse(
     string? GoogleMapsUrl,
     string? ExternalUrl,
     IReadOnlyList<string> ImageUrls,
+    IReadOnlyList<Guid> ParticipantMemberIds,
     int OrderIndex,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);

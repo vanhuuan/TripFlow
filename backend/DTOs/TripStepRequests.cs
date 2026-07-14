@@ -1,4 +1,4 @@
-using backend.Entities;
+﻿using backend.Entities;
 
 namespace backend.DTOs;
 
@@ -10,7 +10,8 @@ public record CreateTripStepRequest(
     decimal? CostAmount,
     string? GoogleMapsUrl,
     string? ExternalUrl,
-    IReadOnlyList<string>? ImageUrls);
+    IReadOnlyList<string>? ImageUrls,
+    IReadOnlyList<Guid>? ParticipantMemberIds);
 
 public record UpdateTripStepRequest(
     string Title,
@@ -20,7 +21,8 @@ public record UpdateTripStepRequest(
     decimal? CostAmount,
     string? GoogleMapsUrl,
     string? ExternalUrl,
-    IReadOnlyList<string>? ImageUrls);
+    IReadOnlyList<string>? ImageUrls,
+    IReadOnlyList<Guid>? ParticipantMemberIds);
 
 public record ReorderTripStepsRequest(
     IReadOnlyList<Guid> StepIds);

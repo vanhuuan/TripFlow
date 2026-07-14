@@ -1,4 +1,4 @@
-using backend.Entities;
+﻿using backend.Entities;
 
 namespace backend.DTOs;
 
@@ -32,6 +32,7 @@ public record TripDetailResponse(
     DateTimeOffset UpdatedAt,
     bool IsPublicShared,
     string? PublicShareToken,
+    IReadOnlyList<TripMemberResponse> Members,
     IReadOnlyList<TripStepResponse> Steps);
 
 public record PublicTripDetailResponse(
@@ -39,9 +40,18 @@ public record PublicTripDetailResponse(
     string Title,
     string Destination,
     string? Description,
-    DateOnly? StartDate,
-    DateOnly? EndDate,
     string? CoverImageUrl,
     string CurrencyCode,
-    decimal TotalCost,
-    IReadOnlyList<TripStepResponse> Steps);
+    IReadOnlyList<PublicTripStepResponse> Steps);
+
+public record PublicTripStepResponse(
+    Guid Id,
+    string Title,
+    string? Description,
+    TripStepType Type,
+    TripStepStatus Status,
+    string? ScheduledTime,
+    string? GoogleMapsUrl,
+    string? ExternalUrl,
+    IReadOnlyList<string> ImageUrls,
+    int OrderIndex);

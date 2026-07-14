@@ -91,7 +91,8 @@ export function EditTripStepPage() {
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <PageHeader eyebrow={t("trip.itinerary")} title={t("trip.editSteps")} description={t("trip.generateShareDescription")} />
-      <TripStepForm step={step} submitLabel={t("builder.saveChanges")} isSaving={isSaving} serverError={serverError} currencyCode={trip.currencyCode} onSubmit={handleSubmit} />
+      <TripStepForm step={step} submitLabel={t("builder.saveChanges")} isSaving={isSaving} serverError={serverError} currencyCode={trip.currencyCode} members={trip.members} onSubmit={handleSubmit} />
     </section>
   );
 }
+

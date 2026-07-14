@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using backend.Data;
 using backend.DTOs;
 using backend.Entities;
@@ -17,7 +16,9 @@ namespace backend.Controllers;
 public class TripsController(
     AppDbContext dbContext,
     ICurrentUserService currentUserService,
-    IConfiguration configuration) : ControllerBase
+    IConfiguration configuration,
+    IBlogStorageService blogStorage,
+    ILogger<TripsController> logger) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<TripDetailResponse>> Create(CreateTripRequest request, CancellationToken cancellationToken)
@@ -25,7 +26,7 @@ public class TripsController(
         if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
         var normalizedRequest = NormalizeRequest(request);
-        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate, normalizedRequest.CurrencyCode)) return ValidationProblem(ModelState);
+        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate, normalizedRequest.CurrencyCode, normalizedRequest.Members)) return ValidationProblem(ModelState);
 
         var now = DateTimeOffset.UtcNow;
         var trip = new Trip
@@ -45,6 +46,11 @@ public class TripsController(
             CreatedAt = now,
             UpdatedAt = now
         };
+
+        foreach (var member in normalizedRequest.Members)
+        {
+            trip.Members.Add(new TripMember { Id = Guid.NewGuid(), Name = member.Name, CreatedAt = now });
+        }
 
         dbContext.Trips.Add(trip);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -73,7 +79,7 @@ public class TripsController(
     {
         if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
         var normalizedRequest = NormalizeRequest(request);
-        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate, normalizedRequest.CurrencyCode)) return ValidationProblem(ModelState);
+        if (!ValidateTripRequest(normalizedRequest.Title, normalizedRequest.Destination, normalizedRequest.StartDate, normalizedRequest.EndDate, normalizedRequest.CurrencyCode, normalizedRequest.Members)) return ValidationProblem(ModelState);
 
         var trip = await GetOwnedTrip(tripId, userId, cancellationToken);
         if (trip is null) return NotFound();
@@ -86,6 +92,7 @@ public class TripsController(
         trip.CoverImageUrl = normalizedRequest.CoverImageUrl;
         trip.CurrencyCode = normalizedRequest.CurrencyCode;
         trip.UpdatedAt = DateTimeOffset.UtcNow;
+        SyncMembers(trip, normalizedRequest.Members);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(ToDetailResponse(trip));
     }
@@ -96,8 +103,12 @@ public class TripsController(
         if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
         var trip = await GetOwnedTrip(tripId, userId, cancellationToken);
         if (trip is null) return NotFound();
+        var draftBlob = trip.Blog?.DraftBlobName;
+        var publishedBlob = trip.Blog?.PublishedBlobName;
         dbContext.Trips.Remove(trip);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await DeleteBlogBlob(draftBlob, cancellationToken);
+        await DeleteBlogBlob(publishedBlob, cancellationToken);
         return NoContent();
     }
 
@@ -153,19 +164,54 @@ public class TripsController(
         userId = Guid.Empty; return false;
     }
 
-    private async Task<Trip?> GetOwnedTrip(Guid tripId, Guid userId, CancellationToken cancellationToken) => await dbContext.Trips.Include(trip => trip.Steps).SingleOrDefaultAsync(trip => trip.Id == tripId && trip.UserId == userId, cancellationToken);
+    private async Task<Trip?> GetOwnedTrip(Guid tripId, Guid userId, CancellationToken cancellationToken) => await dbContext.Trips
+        .Include(trip => trip.Blog)
+        .Include(trip => trip.Members)
+        .Include(trip => trip.Steps).ThenInclude(step => step.Participants)
+        .SingleOrDefaultAsync(trip => trip.Id == tripId && trip.UserId == userId, cancellationToken);
 
-    private bool ValidateTripRequest(string title, string destination, DateOnly? startDate, DateOnly? endDate, string currencyCode)
+    private async Task DeleteBlogBlob(string? blobName, CancellationToken cancellationToken)
+    {
+        try { await blogStorage.DeleteIfExistsAsync(blobName, cancellationToken); }
+        catch (Exception exception) { logger.LogWarning(exception, "Could not delete blog blob {BlobName} after trip deletion.", blobName); }
+    }
+
+    private bool ValidateTripRequest(string title, string destination, DateOnly? startDate, DateOnly? endDate, string currencyCode, IReadOnlyList<NormalizedTripMemberRequest> members)
     {
         if (string.IsNullOrWhiteSpace(title)) ModelState.AddModelError(nameof(CreateTripRequest.Title), "Title is required.");
         if (string.IsNullOrWhiteSpace(destination)) ModelState.AddModelError(nameof(CreateTripRequest.Destination), "Destination is required.");
         if (startDate.HasValue && endDate.HasValue && endDate.Value < startDate.Value) ModelState.AddModelError(nameof(CreateTripRequest.EndDate), "End date must be on or after start date.");
         if (string.IsNullOrWhiteSpace(currencyCode) || currencyCode.Length != 3) ModelState.AddModelError(nameof(CreateTripRequest.CurrencyCode), "Currency code must be a 3-letter code.");
+        if (members.Select(member => member.Name.ToUpperInvariant()).Distinct().Count() != members.Count) ModelState.AddModelError(nameof(CreateTripRequest.Members), "Trip member names must be unique.");
         return ModelState.IsValid;
     }
 
-    private static NormalizedTripRequest NormalizeRequest(CreateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl), NormalizeCurrencyCode(request.CurrencyCode));
-    private static NormalizedTripRequest NormalizeRequest(UpdateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl), NormalizeCurrencyCode(request.CurrencyCode));
+    private void SyncMembers(Trip trip, IReadOnlyList<NormalizedTripMemberRequest> requestedMembers)
+    {
+        var requestedIds = requestedMembers.Where(member => member.Id.HasValue).Select(member => member.Id!.Value).ToHashSet();
+        var removedMembers = trip.Members.Where(member => !requestedIds.Contains(member.Id)).ToList();
+        foreach (var removedMember in removedMembers)
+        {
+            trip.Members.Remove(removedMember);
+        }
+
+        foreach (var requestedMember in requestedMembers)
+        {
+            var existingMember = requestedMember.Id.HasValue ? trip.Members.SingleOrDefault(member => member.Id == requestedMember.Id.Value) : null;
+            if (existingMember is null)
+            {
+                trip.Members.Add(new TripMember { Id = Guid.NewGuid(), TripId = trip.Id, Name = requestedMember.Name, CreatedAt = DateTimeOffset.UtcNow });
+            }
+            else
+            {
+                existingMember.Name = requestedMember.Name;
+            }
+        }
+    }
+
+    private static NormalizedTripRequest NormalizeRequest(CreateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl), NormalizeCurrencyCode(request.CurrencyCode), NormalizeMembers(request.Members));
+    private static NormalizedTripRequest NormalizeRequest(UpdateTripRequest request) => new(request.Title.Trim(), request.Destination.Trim(), NormalizeOptionalString(request.Description), request.StartDate, request.EndDate, NormalizeOptionalString(request.CoverImageUrl), NormalizeCurrencyCode(request.CurrencyCode), NormalizeMembers(request.Members));
+    private static IReadOnlyList<NormalizedTripMemberRequest> NormalizeMembers(IReadOnlyList<TripMemberRequest>? members) => members?.Select(member => new NormalizedTripMemberRequest(member.Id, member.Name.Trim())).Where(member => !string.IsNullOrWhiteSpace(member.Name)).ToList() ?? [];
     private static string? NormalizeOptionalString(string? value) { var trimmedValue = value?.Trim(); return string.IsNullOrEmpty(trimmedValue) ? null : trimmedValue; }
     private static string NormalizeCurrencyCode(string currencyCode) => currencyCode.Trim().ToUpperInvariant();
     private static string GenerateShareToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)).Replace("+", "-").Replace("/", "_").TrimEnd('=');
@@ -177,9 +223,11 @@ public class TripsController(
     }
 
     private static TripSummaryResponse ToSummaryResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared);
-    private static TripDetailResponse ToDetailResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared, trip.PublicShareToken, trip.Steps.OrderBy(step => step.OrderIndex).Select(ToStepResponse).ToList());
-    private static TripStepResponse ToStepResponse(TripStep step) => new(step.Id, step.TripId, step.Title, step.Description, step.Type, step.Status, step.ScheduledAt, step.CostAmount, step.GoogleMapsUrl, step.ExternalUrl, DeserializeImageUrls(step.ImageUrlsJson), step.OrderIndex, step.CreatedAt, step.UpdatedAt);
+    private static TripDetailResponse ToDetailResponse(Trip trip) => new(trip.Id, trip.Title, trip.Destination, trip.Description, trip.StartDate, trip.EndDate, trip.CoverImageUrl, trip.CurrencyCode, trip.Steps.Sum(step => step.CostAmount ?? 0m), trip.Status, trip.CreatedAt, trip.UpdatedAt, trip.IsPublicShared, trip.PublicShareToken, trip.Members.OrderBy(member => member.CreatedAt).Select(ToMemberResponse).ToList(), trip.Steps.OrderBy(step => step.OrderIndex).Select(ToStepResponse).ToList());
+    private static TripMemberResponse ToMemberResponse(TripMember member) => new(member.Id, member.Name);
+    private static TripStepResponse ToStepResponse(TripStep step) => new(step.Id, step.TripId, step.Title, step.Description, step.Type, step.Status, step.ScheduledAt, step.CostAmount, step.GoogleMapsUrl, step.ExternalUrl, DeserializeImageUrls(step.ImageUrlsJson), step.Participants.Select(participant => participant.TripMemberId).ToList(), step.OrderIndex, step.CreatedAt, step.UpdatedAt);
     private static IReadOnlyList<string> DeserializeImageUrls(string? value) => string.IsNullOrWhiteSpace(value) ? [] : (JsonSerializer.Deserialize<List<string>>(value) ?? []);
 
-    private sealed record NormalizedTripRequest(string Title, string Destination, string? Description, DateOnly? StartDate, DateOnly? EndDate, string? CoverImageUrl, string CurrencyCode);
+    private sealed record NormalizedTripRequest(string Title, string Destination, string? Description, DateOnly? StartDate, DateOnly? EndDate, string? CoverImageUrl, string CurrencyCode, IReadOnlyList<NormalizedTripMemberRequest> Members);
+    private sealed record NormalizedTripMemberRequest(Guid? Id, string Name);
 }

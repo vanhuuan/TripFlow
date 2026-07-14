@@ -1,13 +1,33 @@
-import { CheckCircle2, Copy, Edit, Eye, ListPlus, Play, Share2, Trash2, Unlock } from "lucide-react";
+ï»¿import { CheckCircle2, Copy, Edit, Eye, ListPlus, Play, Share2, Trash2, Unlock } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { completeTrip, createTripShareLink, deleteTrip, disableTripShareLink, getTrip, startTrip, type TripDetail } from "../api/trips";
+import { completeTrip, createTripShareLink, deleteTrip, disableTripShareLink, getTrip, startTrip, type TripDetail, type TripMember, type TripStep } from "../api/trips";
 import { useI18n } from "../i18n";
 import { PageHeader } from "../components/PageHeader";
 import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
 import { formatDateRange, formatMoney, resolveAssetUrl, statusClassName, statusLabel } from "../components/trips/tripFormatting";
 import { stepTypeLabel } from "../components/trips/tripStepFormatting";
 
+function getStepParticipants(step: TripStep, members: TripMember[]) {
+  if (members.length === 0) return [];
+  const selected = members.filter((member) => step.participantMemberIds.includes(member.id));
+  return selected.length > 0 ? selected : members;
+}
+
+function calculateSplitTotals(trip: TripDetail) {
+  const totals = new Map(trip.members.map((member) => [member.id, 0]));
+  for (const step of trip.steps) {
+    const cost = step.costAmount == null ? 0 : Number(step.costAmount);
+    const participants = getStepParticipants(step, trip.members);
+    if (!Number.isFinite(cost) || cost <= 0 || participants.length === 0) continue;
+    const share = cost / participants.length;
+    for (const participant of participants) {
+      totals.set(participant.id, (totals.get(participant.id) ?? 0) + share);
+    }
+  }
+  return trip.members.map((member) => ({ member, amount: totals.get(member.id) ?? 0 }));
+}
 export function TripDetailPage() {
   const { tripId } = useParams();
   const navigate = useNavigate();
@@ -78,7 +98,7 @@ export function TripDetailPage() {
   }
 
   async function handleDeleteTrip() {
-    if (!tripId || !window.confirm("Xóa chuy?n di này? Thao tác này không th? hoàn tác.")) return;
+    if (!tripId || !window.confirm("Xï¿½a chuy?n di nï¿½y? Thao tï¿½c nï¿½y khï¿½ng th? hoï¿½n tï¿½c.")) return;
     setIsMutating(true);
     try {
       await deleteTrip(tripId);
@@ -141,6 +161,7 @@ export function TripDetailPage() {
   }
 
   const coverUrl = resolveAssetUrl(trip.coverImageUrl);
+  const splitTotals = calculateSplitTotals(trip);
 
   return (
     <section className="space-y-8">
@@ -183,6 +204,10 @@ export function TripDetailPage() {
             <Eye size={18} aria-hidden="true" />
             {t("trip.openFocusMode")}
           </Link>
+          <Link className="button-secondary pressable w-full active:scale-[0.96]" to={`/trips/${trip.id}/blog`}>
+            <BookOpen size={18} aria-hidden="true" />
+            {t("blog.openWorkspace")}
+          </Link>
           <button className="button-danger pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={handleDeleteTrip} disabled={isMutating}>
             <Trash2 size={18} aria-hidden="true" />
             {t("trip.deleteTrip")}
@@ -190,6 +215,28 @@ export function TripDetailPage() {
         </div>
       </div>
 
+
+      {trip.members.length > 0 ? (
+        <div className="surface-card p-5 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Bill split</h2>
+              <p className="mt-1 text-sm text-stone-600">Each step cost is split evenly between members selected for that step.</p>
+            </div>
+            <Link className="button-secondary pressable active:scale-[0.96]" to={`/trips/${trip.id}/edit`}>
+              Manage members
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {splitTotals.map(({ member, amount }) => (
+              <div key={member.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200">
+                <p className="text-sm font-semibold text-ink">{member.name}</p>
+                <p className="mt-2 text-2xl font-semibold text-coast tabular-nums">{formatMoney(amount, trip.currencyCode, locale)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="surface-card p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -249,6 +296,12 @@ export function TripDetailPage() {
                   <div className="min-w-0">
                     <p className="font-semibold text-ink">{step.title}</p>
                     {step.costAmount != null ? <p className="mt-1 text-sm text-stone-600">{t("common.cost")}: {formatMoney(step.costAmount, trip.currencyCode, locale)}</p> : null}
+                    {trip.members.length > 0 ? (
+                      <p className="mt-1 text-sm text-stone-600">
+                        Members: {getStepParticipants(step, trip.members).map((member) => member.name).join(", ")}
+                        {step.costAmount != null && getStepParticipants(step, trip.members).length > 0 ? ` Â· ${formatMoney(Number(step.costAmount) / getStepParticipants(step, trip.members).length, trip.currencyCode, locale)} each` : ""}
+                      </p>
+                    ) : null}
                     {step.description ? <p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-stone-700">{step.description}</p> : <p className="mt-1 text-sm text-stone-500">{t("common.noDescriptionYet")}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
@@ -264,7 +317,11 @@ export function TripDetailPage() {
                     ) : null}
                     {step.imageUrls.length > 0 ? <span className="inline-flex items-center rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-ink">{step.imageUrls.length} {step.imageUrls.length === 1 ? t("tripSteps.photo") : t("tripSteps.photos")}</span> : null}
                   </div>
-                  {step.imageUrls.length > 0 ? <TripStepImageCarousel className="mt-5" imageUrls={step.imageUrls} altPrefix={step.title} /> : null}
+                  {step.imageUrls.length > 0 ? (
+                    <div className="w-full md:col-start-2 md:col-span-2 md:max-w-[720px] md:justify-self-start">
+                      <TripStepImageCarousel className="mt-5" imageUrls={step.imageUrls} altPrefix={step.title} />
+                    </div>
+                  ) : null}
                 </div>
               </li>
             ))}
@@ -274,3 +331,4 @@ export function TripDetailPage() {
     </section>
   );
 }
+

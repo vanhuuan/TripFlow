@@ -1,6 +1,10 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace backend.DTOs;
+
+public record TripMemberRequest(
+    Guid? Id,
+    [Required, MaxLength(100)] string Name);
 
 public record CreateTripRequest(
     [Required, MaxLength(150)] string Title,
@@ -9,7 +13,8 @@ public record CreateTripRequest(
     DateOnly? StartDate,
     DateOnly? EndDate,
     [MaxLength(2048)] string? CoverImageUrl,
-    [Required, MinLength(3), MaxLength(3)] string CurrencyCode);
+    [Required, MinLength(3), MaxLength(3)] string CurrencyCode,
+    IReadOnlyList<TripMemberRequest>? Members);
 
 public record UpdateTripRequest(
     [Required, MaxLength(150)] string Title,
@@ -18,4 +23,5 @@ public record UpdateTripRequest(
     DateOnly? StartDate,
     DateOnly? EndDate,
     [MaxLength(2048)] string? CoverImageUrl,
-    [Required, MinLength(3), MaxLength(3)] string CurrencyCode);
+    [Required, MinLength(3), MaxLength(3)] string CurrencyCode,
+    IReadOnlyList<TripMemberRequest>? Members);

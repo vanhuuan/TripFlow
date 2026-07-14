@@ -1,4 +1,4 @@
-namespace backend.Entities;
+﻿namespace backend.Entities;
 
 public class Trip
 {
@@ -18,6 +18,8 @@ public class Trip
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<TripStep> Steps { get; set; } = [];
+    public ICollection<TripMember> Members { get; set; } = [];
+    public TripBlog? Blog { get; set; }
 }
 
 public enum TripStatus
@@ -26,3 +28,4 @@ public enum TripStatus
     Active = 1,
     Completed = 2
 }
+

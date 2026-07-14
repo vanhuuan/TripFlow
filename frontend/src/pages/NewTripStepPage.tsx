@@ -94,7 +94,8 @@ export function NewTripStepPage() {
           {t("trip.backToTrip")}
         </Link>
       </div>
-      <TripStepForm submitLabel={t("trip.addStep")} isSaving={isSaving} serverError={serverError} currencyCode={trip.currencyCode} onSubmit={handleSubmit} />
+      <TripStepForm submitLabel={t("trip.addStep")} isSaving={isSaving} serverError={serverError} currencyCode={trip.currencyCode} members={trip.members} onSubmit={handleSubmit} />
     </section>
   );
 }
+

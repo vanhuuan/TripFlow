@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { uploadFile, type TripStep, type TripStepPayload, type TripStepType } from "../../api/trips";
+import { uploadFile, type TripMember, type TripStep, type TripStepPayload, type TripStepType } from "../../api/trips";
 import { useI18n, getStepTypeOptions } from "../../i18n";
 import { formatMoney, resolveAssetUrl } from "./tripFormatting";
 import { z } from "zod";
@@ -23,14 +23,16 @@ type TripStepFormProps = {
   isSaving: boolean;
   serverError: string | null;
   currencyCode: string;
+  members: TripMember[];
   onSubmit: (payload: TripStepPayload) => Promise<void>;
 };
 
-export function TripStepForm({ step, submitLabel, isSaving, serverError, currencyCode, onSubmit }: TripStepFormProps) {
+export function TripStepForm({ step, submitLabel, isSaving, serverError, currencyCode, members, onSubmit }: TripStepFormProps) {
   const { locale, t } = useI18n();
   const [files, setFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [participantMemberIds, setParticipantMemberIds] = useState<string[]>(step ? step.participantMemberIds : members.map((member) => member.id));
   const {
     register,
     handleSubmit,
@@ -100,6 +102,7 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
       googleMapsUrl: parsedValues.data.googleMapsUrl?.trim() || null,
       externalUrl: parsedValues.data.externalUrl?.trim() || null,
       imageUrls,
+      participantMemberIds,
     });
   }
 
@@ -147,6 +150,30 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
         </label>
       </div>
 
+
+      {members.length > 0 ? (
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-stone-700">Members joining this step</p>
+            <p className="mt-1 text-xs text-stone-500">The step cost will be split evenly across selected members.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {members.map((member) => (
+              <label key={member.id} className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-ink shadow-sm">
+                <input
+                  className="h-4 w-4 accent-teal-700"
+                  type="checkbox"
+                  checked={participantMemberIds.includes(member.id)}
+                  onChange={(event) => {
+                    setParticipantMemberIds((current) => event.target.checked ? [...current, member.id] : current.filter((id) => id !== member.id));
+                  }}
+                />
+                {member.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <label className="block text-sm font-medium">
         {t("tripSteps.description")}
         <textarea className="form-input mt-1.5 min-h-28 resize-y" {...register("description")} />
@@ -185,3 +212,4 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
     </form>
   );
 }
+

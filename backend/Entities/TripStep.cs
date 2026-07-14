@@ -1,4 +1,4 @@
-namespace backend.Entities;
+﻿namespace backend.Entities;
 
 public class TripStep
 {
@@ -17,6 +17,7 @@ public class TripStep
     public int OrderIndex { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public ICollection<TripStepParticipant> Participants { get; set; } = [];
 }
 
 public enum TripStepType
@@ -35,3 +36,4 @@ public enum TripStepStatus
     Done = 1,
     Skipped = 2
 }
+

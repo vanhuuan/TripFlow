@@ -14,9 +14,11 @@ import { LoginPage } from "./pages/LoginPage";
 import { NewTripPage } from "./pages/NewTripPage";
 import { NewTripStepPage } from "./pages/NewTripStepPage";
 import { PublicTripPage } from "./pages/PublicTripPage";
+import { PublicTripBlogPage } from "./pages/PublicTripBlogPage";
 import { SignupPage } from "./pages/SignupPage";
 import { TripDetailPage } from "./pages/TripDetailPage";
 import { TripStepsEditPage } from "./pages/TripStepsEditPage";
+import { TripBlogPage } from "./pages/TripBlogPage";
 import "./index.css";
 
 const router = createBrowserRouter([
@@ -26,6 +28,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <LandingPage /> },
       { path: "share/:token", element: <PublicTripPage /> },
+      { path: "blogs/:token", element: <PublicTripBlogPage /> },
       {
         element: <PublicOnlyRoute />,
         children: [
@@ -44,6 +47,7 @@ const router = createBrowserRouter([
           { path: "trips/:tripId/steps/new", element: <NewTripStepPage /> },
           { path: "trips/:tripId/steps/:stepId/edit", element: <EditTripStepPage /> },
           { path: "trips/:tripId/focus", element: <FocusModePage /> },
+          { path: "trips/:tripId/blog", element: <TripBlogPage /> },
         ],
       },
     ],

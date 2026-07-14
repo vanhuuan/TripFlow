@@ -16,6 +16,7 @@ services:
       Jwt__ExpirationMinutes: 120
       BlobStorage__ConnectionString: ""
       BlobStorage__ContainerName: tripflow-images
+      BlogBlobStorage__ContainerName: tripflow-blogs
     depends_on:
       db:
         condition: service_healthy

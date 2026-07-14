@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { uploadFile, type TripDetail, type TripPayload } from "../../api/trips";
+import { uploadFile, type TripDetail, type TripMemberPayload, type TripPayload } from "../../api/trips";
 import { useI18n } from "../../i18n";
 import { resolveAssetUrl } from "./tripFormatting";
 import { z } from "zod";
@@ -37,6 +37,7 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
   const [isCoverMenuOpen, setIsCoverMenuOpen] = useState(false);
   const [isCoverDragging, setIsCoverDragging] = useState(false);
   const [coverPositionY, setCoverPositionY] = useState(50);
+  const [members, setMembers] = useState<TripMemberPayload[]>(trip?.members.map((member) => ({ id: member.id, name: member.name })) ?? []);
   const coverFrameRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{ pointerId: number; startY: number; startPositionY: number } | null>(null);
   const {
@@ -141,6 +142,7 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
       endDate: parsedValues.data.endDate || null,
       coverImageUrl: finalCoverImageUrl,
       currencyCode: parsedValues.data.currencyCode.trim().toUpperCase(),
+      members: members.map((member) => ({ id: member.id, name: member.name.trim() })).filter((member) => member.name.length > 0),
     });
   }
 
@@ -173,6 +175,46 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
         {errors.description ? <span className="mt-1.5 block text-sm text-red-600">{errors.description.message}</span> : null}
       </label>
 
+
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-stone-700">Trip members</p>
+            <p className="mt-1 text-xs text-stone-500">Add people who can join steps and share bills.</p>
+          </div>
+          <button
+            className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]"
+            type="button"
+            onClick={() => setMembers((current) => [...current, { id: null, name: "" }])}
+          >
+            Add member
+          </button>
+        </div>
+        {members.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-stone-200 px-4 py-3 text-sm text-stone-500">No trip members yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {members.map((member, index) => (
+              <div key={member.id ?? `new-${index}`} className="flex gap-2">
+                <input
+                  className="form-input"
+                  type="text"
+                  value={member.name}
+                  placeholder={`Member ${index + 1}`}
+                  onChange={(event) => setMembers((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, name: event.target.value } : item)))}
+                />
+                <button
+                  className="button-ghost pressable shrink-0 px-3 py-2 text-sm active:scale-[0.96]"
+                  type="button"
+                  onClick={() => setMembers((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="space-y-2.5">
         <p className="text-sm font-semibold text-stone-700">{t("forms.roundTripDates")}</p>
         <div className="overflow-hidden rounded-[1.4rem] border border-stone-200 bg-white shadow-sm">
@@ -316,3 +358,4 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
     </form>
   );
 }
+

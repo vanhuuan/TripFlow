@@ -11,6 +11,7 @@ import {
   updateTripStep,
   uploadFile,
   type TripDetail,
+  type TripMember,
   type TripStep,
   type TripStepPayload,
   type TripStepType,
@@ -28,6 +29,7 @@ type Draft = {
   googleMapsUrl: string;
   externalUrl: string;
   imageUrls: string[];
+  participantMemberIds: string[];
 };
 
 type StepCard = {
@@ -58,6 +60,7 @@ function blankDraft(): Draft {
     googleMapsUrl: "",
     externalUrl: "",
     imageUrls: [],
+    participantMemberIds: [],
   };
 }
 
@@ -71,6 +74,7 @@ function toDraft(step: TripStep): Draft {
     googleMapsUrl: asText(step.googleMapsUrl),
     externalUrl: asText(step.externalUrl),
     imageUrls: step.imageUrls,
+    participantMemberIds: step.participantMemberIds,
   };
 }
 
@@ -84,6 +88,7 @@ function draftToPayload(draft: Draft): TripStepPayload {
     googleMapsUrl: asText(draft.googleMapsUrl).trim() || null,
     externalUrl: asText(draft.externalUrl).trim() || null,
     imageUrls: draft.imageUrls,
+    participantMemberIds: draft.participantMemberIds,
   };
 }
 
@@ -113,9 +118,11 @@ function validateDraft(draft: Draft) {
   return null;
 }
 
-function StepSummary({ draft, isDirty, currencyCode }: { draft: Draft; isDirty: boolean; currencyCode: string }) {
+function StepSummary({ draft, isDirty, currencyCode, members }: { draft: Draft; isDirty: boolean; currencyCode: string; members: TripMember[] }) {
   const scheduledText = asText(draft.scheduledAt);
   const scheduledLabel = scheduledText ? new Date(scheduledText).toLocaleString() : "Unscheduled";
+  const selectedMembers = members.filter((member) => draft.participantMemberIds.includes(member.id));
+  const participantLabel = selectedMembers.length > 0 ? selectedMembers.map((member) => member.name).join(", ") : members.length > 0 ? "No members selected" : "No trip members";
 
   return (
     <div className="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)_180px_220px] md:items-start">
@@ -127,6 +134,7 @@ function StepSummary({ draft, isDirty, currencyCode }: { draft: Draft; isDirty: 
       <div className="min-w-0">
         <p className="font-semibold text-ink">{asText(draft.title) || "Untitled step"}</p>
         {asText(draft.costAmount).trim() ? <p className="mt-1 text-sm text-stone-600">Cost: {formatMoney(draft.costAmount, currencyCode)}</p> : null}
+        <p className="mt-1 text-sm text-stone-600">Members: {participantLabel}</p>
         {asText(draft.description).trim() ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{asText(draft.description)}</p> : <p className="mt-1 text-sm text-stone-500">No description.</p>}
         {draft.imageUrls.length > 0 ? <TripStepImageCarousel className="max-w-[180px]" imageUrls={draft.imageUrls} altPrefix={draft.title || "Step"} variant="compact" /> : null}
       </div>
@@ -156,6 +164,7 @@ function StepEditor({
   onDragEnd,
   isMutating,
   currencyCode,
+  members,
 }: {
   draft: Draft;
   onChange: (next: Draft) => void;
@@ -166,6 +175,7 @@ function StepEditor({
   onDragEnd: () => void;
   isMutating: boolean;
   currencyCode: string;
+  members: TripMember[];
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -222,7 +232,27 @@ function StepEditor({
           <span className="mt-1 block text-xs text-stone-500">Preview: {costPreview}</span>
         </label>
       </div>
-      <label className="block text-sm font-medium">
+      {members.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-stone-700">Members joining this step</p>
+          <div className="grid gap-2 md:grid-cols-2">
+            {members.map((member) => (
+              <label key={member.id} className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-ink">
+                <input
+                  className="h-4 w-4 accent-teal-700"
+                  type="checkbox"
+                  checked={draft.participantMemberIds.includes(member.id)}
+                  onChange={(event) => {
+                    const nextIds = event.target.checked ? [...draft.participantMemberIds, member.id] : draft.participantMemberIds.filter((id) => id !== member.id);
+                    onChange({ ...draft, participantMemberIds: nextIds });
+                  }}
+                />
+                {member.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}      <label className="block text-sm font-medium">
         Description
         <textarea className="mt-1 min-h-24 w-full rounded border border-stone-300 px-3 py-2" value={draft.description} onChange={(event) => onChange({ ...draft, description: event.target.value })} />
       </label>
@@ -345,7 +375,7 @@ export function TripStepsEditPage() {
   }
 
   function addDraftCard() {
-    const draft = blankDraft();
+    const draft = { ...blankDraft(), participantMemberIds: trip?.members.map((member) => member.id) ?? [] };
     const clientId = createClientId();
     setCards((current) => [...current, { clientId, serverId: null, draft, originalDraft: draft, isEditing: true }]);
     setError(null);
@@ -596,10 +626,11 @@ export function TripStepsEditPage() {
                       onDragEnd={() => setDraggingCardId(null)}
                       isMutating={isSaving}
                       currencyCode={trip.currencyCode}
+                      members={trip.members}
                     />
                   ) : (
                     <>
-                      <StepSummary draft={card.draft} isDirty={isDraftDirty(card) || card.serverId === null} currencyCode={trip.currencyCode} />
+                      <StepSummary draft={card.draft} isDirty={isDraftDirty(card) || card.serverId === null} currencyCode={trip.currencyCode} members={trip.members} />
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <button type="button" className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={() => updateCard(card.clientId, (current) => ({ ...current, isEditing: true }))} disabled={isSaving}>
                           <Edit size={16} aria-hidden="true" />
@@ -643,6 +674,8 @@ export function TripStepsEditPage() {
     </section>
   );
 }
+
+
 
 
 

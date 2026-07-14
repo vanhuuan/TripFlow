@@ -8,6 +8,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<TripStep> TripSteps => Set<TripStep>();
+    public DbSet<TripMember> TripMembers => Set<TripMember>();
+    public DbSet<TripStepParticipant> TripStepParticipants => Set<TripStepParticipant>();
+    public DbSet<TripBlog> TripBlogs => Set<TripBlog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,6 +45,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(trip => trip.User).WithMany(user => user.Trips).HasForeignKey(trip => trip.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<TripMember>(entity =>
+        {
+            entity.HasKey(member => member.Id);
+            entity.Property(member => member.Name).HasMaxLength(100).IsRequired();
+            entity.Property(member => member.CreatedAt).IsRequired();
+            entity.HasIndex(member => member.TripId);
+            entity.HasOne(member => member.Trip).WithMany(trip => trip.Members).HasForeignKey(member => member.TripId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<TripStep>(entity =>
         {
             entity.HasKey(step => step.Id);
@@ -59,6 +71,30 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(step => step.TripId);
             entity.HasIndex(step => new { step.TripId, step.OrderIndex });
             entity.HasOne(step => step.Trip).WithMany(trip => trip.Steps).HasForeignKey(step => step.TripId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripStepParticipant>(entity =>
+        {
+            entity.HasKey(participant => new { participant.TripStepId, participant.TripMemberId });
+            entity.HasIndex(participant => participant.TripMemberId);
+            entity.HasOne(participant => participant.TripStep).WithMany(step => step.Participants).HasForeignKey(participant => participant.TripStepId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(participant => participant.TripMember).WithMany(member => member.StepParticipants).HasForeignKey(participant => participant.TripMemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripBlog>(entity =>
+        {
+            entity.HasKey(blog => blog.Id);
+            entity.Property(blog => blog.Locale).HasMaxLength(2).IsRequired();
+            entity.Property(blog => blog.DraftBlobName).HasMaxLength(512).IsRequired();
+            entity.Property(blog => blog.PublishedBlobName).HasMaxLength(512);
+            entity.Property(blog => blog.PublicShareToken).HasMaxLength(128);
+            entity.Property(blog => blog.GeneratedProvider).HasMaxLength(32);
+            entity.Property(blog => blog.GeneratedModel).HasMaxLength(100);
+            entity.HasIndex(blog => blog.TripId).IsUnique();
+            entity.HasIndex(blog => blog.PublicShareToken).IsUnique();
+            entity.Property(blog => blog.GeneratedAt).IsRequired();
+            entity.Property(blog => blog.UpdatedAt).IsRequired();
+            entity.HasOne(blog => blog.Trip).WithOne(trip => trip.Blog).HasForeignKey<TripBlog>(blog => blog.TripId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

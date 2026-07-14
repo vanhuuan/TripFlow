@@ -13,7 +13,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { locale, toggleLocale, t } = useI18n();
   const location = useLocation();
   const isLandingSurface = location.pathname === "/";
-  const isPublicSurface = isLandingSurface || location.pathname === "/login" || location.pathname === "/signup" || location.pathname.startsWith("/share/");
+  const isPublicSurface = isLandingSurface || location.pathname === "/login" || location.pathname === "/signup" || location.pathname.startsWith("/share/") || location.pathname.startsWith("/blogs/");
 
   const homeTo = isAuthenticated ? "/dashboard" : "/";
   const languageLabel = locale === "vi" ? "EN" : "VI";
