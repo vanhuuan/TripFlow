@@ -3,6 +3,7 @@ import { CalendarPlus, LayoutDashboard, LogIn, LogOut, UserPlus } from "lucide-r
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useI18n } from "../i18n";
+import { getFeaturesPath, getHowItWorksPath, getLocaleHome, getMarketingRoute } from "../seo/marketingSeo";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -10,14 +11,17 @@ type AppLayoutProps = {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { isAuthenticated, logout, user } = useAuth();
-  const { locale, toggleLocale, t } = useI18n();
+  const { locale, setLocale, toggleLocale, t } = useI18n();
   const location = useLocation();
-  const isLandingSurface = location.pathname === "/";
-  const isPublicSurface = isLandingSurface || location.pathname === "/login" || location.pathname === "/signup" || location.pathname.startsWith("/share/") || location.pathname.startsWith("/blogs/");
+  const marketingRoute = getMarketingRoute(location.pathname);
+  const isMarketingSurface = Boolean(marketingRoute);
+  const isPublicSurface = isMarketingSurface || location.pathname === "/login" || location.pathname === "/signup" || location.pathname.startsWith("/share/") || location.pathname.startsWith("/blogs/");
 
-  const homeTo = isAuthenticated ? "/dashboard" : "/";
+  const homeTo = isAuthenticated ? "/dashboard" : getLocaleHome(locale);
   const languageLabel = locale === "vi" ? "EN" : "VI";
   const languageTitle = locale === "vi" ? "Chuyển sang Tiếng Anh" : "Switch to Vietnamese";
+  const nextLocale = locale === "vi" ? "en" : "vi";
+  const languageTarget = marketingRoute?.alternatePath;
 
   const authenticatedLinks = [
     { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
@@ -47,17 +51,31 @@ export function AppLayout({ children }: AppLayoutProps) {
           <nav className="flex flex-wrap items-center gap-2">
             {isPublicSurface ? (
               <>
-                {isLandingSurface ? (
-                  <a
-                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-stone-600 transition-transform transition-colors duration-200 hover:-translate-y-0.5 hover:bg-stone-100 hover:text-ink active:scale-[0.96]"
-                    href="#how-it-works"
-                  >
-                    {t("nav.howItWorks")}
-                  </a>
+                {isMarketingSurface ? (
+                  <>
+                    <Link
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-stone-600 transition-transform transition-colors duration-200 hover:-translate-y-0.5 hover:bg-stone-100 hover:text-ink active:scale-[0.96]"
+                      to={getLocaleHome(locale)}
+                    >
+                      {t("nav.home")}
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-stone-600 transition-transform transition-colors duration-200 hover:-translate-y-0.5 hover:bg-stone-100 hover:text-ink active:scale-[0.96]"
+                      to={getFeaturesPath(locale)}
+                    >
+                      {t("nav.features")}
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-stone-600 transition-transform transition-colors duration-200 hover:-translate-y-0.5 hover:bg-stone-100 hover:text-ink active:scale-[0.96]"
+                      to={getHowItWorksPath(locale)}
+                    >
+                      {t("nav.howItWorks")}
+                    </Link>
+                  </>
                 ) : (
                   <Link
                     className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-stone-600 transition-transform transition-colors duration-200 hover:-translate-y-0.5 hover:bg-stone-100 hover:text-ink active:scale-[0.96]"
-                    to="/"
+                    to={getLocaleHome(locale)}
                   >
                     {t("nav.home")}
                   </Link>
@@ -107,15 +125,27 @@ export function AppLayout({ children }: AppLayoutProps) {
                 ) : null}
               </>
             )}
-            <button
-              className={isPublicSurface ? "inline-flex min-w-14 items-center justify-center rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-stone-50 active:scale-[0.96]" : "inline-flex min-w-14 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white/15 active:scale-[0.96]"}
-              type="button"
-              onClick={toggleLocale}
-              aria-label={languageTitle}
-              title={languageTitle}
-            >
-              {languageLabel}
-            </button>
+            {languageTarget ? (
+              <Link
+                className={isPublicSurface ? "inline-flex min-h-10 min-w-14 items-center justify-center rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-stone-50 active:scale-[0.96]" : "inline-flex min-h-10 min-w-14 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white/15 active:scale-[0.96]"}
+                to={languageTarget}
+                onClick={() => setLocale(nextLocale)}
+                aria-label={languageTitle}
+                title={languageTitle}
+              >
+                {languageLabel}
+              </Link>
+            ) : (
+              <button
+                className={isPublicSurface ? "inline-flex min-h-10 min-w-14 items-center justify-center rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-stone-50 active:scale-[0.96]" : "inline-flex min-h-10 min-w-14 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white/15 active:scale-[0.96]"}
+                type="button"
+                onClick={toggleLocale}
+                aria-label={languageTitle}
+                title={languageTitle}
+              >
+                {languageLabel}
+              </button>
+            )}
           </nav>
         </div>
       </header>

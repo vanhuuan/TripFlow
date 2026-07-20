@@ -7,3 +7,5 @@ uploads/
 *.user
 *.suo
 docker-compose.override.yml
+appsettings.json
+appsettings.*.json

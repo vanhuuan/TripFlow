@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fontsource/be-vietnam-pro": "^5.2.8",
     "@vitejs/plugin-react": "^5.0.0",
     "axios": "^1.7.9",
     "lucide-react": "^0.468.0",

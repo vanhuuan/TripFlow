@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { uploadFile, type TripMember, type TripStep, type TripStepPayload, type TripStepType } from "../../api/trips";
 import { useI18n, getStepTypeOptions } from "../../i18n";
 import { formatMoney, resolveAssetUrl } from "./tripFormatting";
+import { PlaceAutocomplete } from "./PlaceAutocomplete";
 import { z } from "zod";
 
 const stepSchema = z.object({
@@ -36,6 +37,8 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     setError,
     formState: { errors },
     watch,
@@ -116,6 +119,16 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
     <form className="surface-card space-y-6 p-5 sm:p-6" onSubmit={handleSubmit(handleFormSubmit)}>
       {serverError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{serverError}</p> : null}
       {uploadError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{uploadError}</p> : null}
+
+      <PlaceAutocomplete
+        disabled={isSaving || isUploading}
+        onSelect={(suggestion) => {
+          if (!getValues("title").trim()) {
+            setValue("title", suggestion.name, { shouldDirty: true, shouldValidate: true });
+          }
+          setValue("googleMapsUrl", suggestion.googleMapsUrl, { shouldDirty: true, shouldValidate: true });
+        }}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium">

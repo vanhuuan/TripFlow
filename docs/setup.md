@@ -29,6 +29,7 @@ dotnet ef database update
 ## Environment
 
 Frontend uses `VITE_API_BASE_URL`.
+Set `VITE_SITE_URL` to the canonical public origin (for example, `https://tripflow.app`) so prerendered canonicals, social metadata, `robots.txt`, and `sitemap.xml` use the deployed domain.
 
 Backend uses `ConnectionStrings__DefaultConnection` for PostgreSQL.
 

@@ -35,10 +35,10 @@ export function BlogArticle({ content, locale, publishedLabel }: BlogArticleProp
         <ol className="space-y-16">
           {content.sections.map((section, index) => (
             <li key={section.sourceStepId} className="grid gap-7 lg:grid-cols-[72px_minmax(0,1fr)]">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#d9eee8] font-serif text-xl font-semibold text-[#165f57] tabular-nums">{String(index + 1).padStart(2, "0")}</div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#d9eee8] text-xl font-semibold text-[#165f57] tabular-nums">{String(index + 1).padStart(2, "0")}</div>
               <section>
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <h2 className="text-balance font-serif text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">{section.heading}</h2>
+                  <h2 className="text-balance text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">{section.heading}</h2>
                   {section.costAmount != null ? <span className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200 tabular-nums">{formatMoney(section.costAmount, content.currencyCode, locale)}</span> : null}
                 </div>
                 {section.scheduledAt ? <time className="mt-3 block text-sm text-stone-500 tabular-nums" dateTime={section.scheduledAt}>{new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(section.scheduledAt))}</time> : null}
@@ -50,7 +50,7 @@ export function BlogArticle({ content, locale, publishedLabel }: BlogArticleProp
         </ol>
 
         <footer className="mt-20 border-t border-stone-200 pt-10">
-          <p className="font-serif text-2xl leading-10 text-stone-800 sm:text-3xl">{content.conclusion}</p>
+          <p className="text-2xl leading-10 text-stone-800 sm:text-3xl">{content.conclusion}</p>
         </footer>
       </div>
     </article>

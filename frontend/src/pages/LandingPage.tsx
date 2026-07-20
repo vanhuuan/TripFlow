@@ -3,6 +3,7 @@ import { ArrowRight, CalendarPlus, CheckCircle2, Clock3, Link2, ShieldCheck, Spa
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useI18n } from "../i18n";
+import { getFeaturesPath, getHowItWorksPath } from "../seo/marketingSeo";
 
 type IconComponent = ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>;
 
@@ -14,11 +15,18 @@ type FeatureCard = {
 
 export function LandingPage() {
   const { isAuthenticated } = useAuth();
-  const { t } = useI18n();
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
+
+  return <LandingPageContent />;
+}
+
+export function LandingPageContent() {
+  const { locale, t } = useI18n();
+  const featuresPath = getFeaturesPath(locale);
+  const howItWorksPath = getHowItWorksPath(locale);
 
   const featureCards: FeatureCard[] = [
     {
@@ -231,6 +239,10 @@ export function LandingPage() {
             </div>
             <h2 className="mt-5 text-balance text-xl font-semibold text-ink">{title}</h2>
             <p className="mt-3 text-pretty text-sm leading-7 text-stone-600">{description}</p>
+            <Link className="mt-5 inline-flex min-h-10 items-center text-sm font-semibold text-coast hover:text-teal-800" to={featuresPath}>
+              {t("seoPages.features.learnMore")}
+              <ArrowRight className="ml-2" size={15} aria-hidden={true} />
+            </Link>
           </article>
         ))}
       </div>
@@ -245,8 +257,8 @@ export function LandingPage() {
               {t("landing.createAccount")}
               <ArrowRight size={16} aria-hidden={true} />
             </Link>
-            <Link className="button-secondary pressable active:scale-[0.96]" to="/login">
-              {t("landing.login")}
+            <Link className="button-secondary pressable active:scale-[0.96]" to={howItWorksPath}>
+              {t("nav.howItWorks")}
             </Link>
           </div>
         </div>

@@ -76,6 +76,13 @@ export type PublicTripDetail = {
 export type TripPayload = { title: string; destination: string; description: string | null; startDate: string | null; endDate: string | null; coverImageUrl: string | null; currencyCode: string; members: TripMemberPayload[] };
 export type TripStepPayload = { title: string; description: string | null; type: TripStepType; scheduledAt: string | null; costAmount: number | null; googleMapsUrl: string | null; externalUrl: string | null; imageUrls: string[]; participantMemberIds: string[] };
 
+export type PlaceSuggestion = {
+  placeId: string;
+  name: string;
+  address: string | null;
+  googleMapsUrl: string;
+};
+
 export type ShareLinkResponse = { shareUrl: string; token: string };
 
 export async function getTrips() { return (await apiClient.get<TripSummary[]>("/api/trips")).data; }
@@ -169,6 +176,12 @@ export async function reorderTripSteps(tripId: string, stepIds: string[]) { retu
 export async function markTripStepDone(tripId: string, stepId: string) { return (await apiClient.post<TripStep>(`/api/trips/${tripId}/steps/${stepId}/done`)).data; }
 export async function skipTripStep(tripId: string, stepId: string) { return (await apiClient.post<TripStep>(`/api/trips/${tripId}/steps/${stepId}/skip`)).data; }
 export async function getPublicTrip(token: string) { return (await apiClient.get<PublicTripDetail>(`/api/public/trips/${token}`)).data; }
+export async function autocompletePlaces(input: string, languageCode: string, signal?: AbortSignal) {
+  return (await apiClient.get<PlaceSuggestion[]>("/api/places/autocomplete", {
+    params: { input, languageCode },
+    signal,
+  })).data;
+}
 
 
 

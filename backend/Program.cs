@@ -1,5 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using backend.Configuration;
 using backend.Data;
 using backend.Entities;
@@ -47,6 +49,8 @@ builder.Services.AddOptions<AnthropicSettings>()
     .Bind(builder.Configuration.GetSection(AnthropicSettings.SectionName));
 builder.Services.AddOptions<GoogleAISettings>()
     .Bind(builder.Configuration.GetSection(GoogleAISettings.SectionName));
+builder.Services.AddOptions<GoogleMapsSettings>()
+    .Bind(builder.Configuration.GetSection(GoogleMapsSettings.SectionName));
 builder.Services.AddOptions<AISettings>()
     .Bind(builder.Configuration.GetSection(AISettings.SectionName))
     .ValidateDataAnnotations()
@@ -54,6 +58,26 @@ builder.Services.AddOptions<AISettings>()
     .Validate(settings => HasProviderApiKey(settings.Provider, builder.Configuration), "The configured AI provider requires its API key.")
     .ValidateOnStart();
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>(client =>
+{
+    client.BaseAddress = new Uri("https://places.googleapis.com/");
+    client.Timeout = TimeSpan.FromSeconds(8);
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("places", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 60,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 
 builder.Services.AddCors(options =>
 {
@@ -111,6 +135,7 @@ app.UseCors("TripFlowCors");
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGet("/health", () => Results.Ok(new
 {

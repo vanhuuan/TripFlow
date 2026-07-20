@@ -18,6 +18,7 @@ import {
 } from "../api/trips";
 import { PageHeader } from "../components/PageHeader";
 import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
+import { PlaceAutocomplete } from "../components/trips/PlaceAutocomplete";
 import { formatDateRange, formatMoney, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
 
 type Draft = {
@@ -205,6 +206,14 @@ function StepEditor({
 
   return (
     <div className="space-y-4">
+      <PlaceAutocomplete
+        disabled={isMutating || isUploading}
+        onSelect={(suggestion) => onChange({
+          ...draft,
+          title: asText(draft.title).trim() ? draft.title : suggestion.name,
+          googleMapsUrl: suggestion.googleMapsUrl,
+        })}
+      />
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-sm font-medium">
           Type

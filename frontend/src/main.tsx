@@ -1,6 +1,11 @@
 ﻿import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import "@fontsource/be-vietnam-pro/400.css";
+import "@fontsource/be-vietnam-pro/500.css";
+import "@fontsource/be-vietnam-pro/600.css";
+import "@fontsource/be-vietnam-pro/700.css";
+import "@fontsource/be-vietnam-pro/800.css";
 import App from "./App";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { PublicOnlyRoute } from "./auth/PublicOnlyRoute";
@@ -10,6 +15,8 @@ import { EditTripPage } from "./pages/EditTripPage";
 import { EditTripStepPage } from "./pages/EditTripStepPage";
 import { FocusModePage } from "./pages/FocusModePage";
 import { LandingPage } from "./pages/LandingPage";
+import { FeaturesPage } from "./pages/FeaturesPage";
+import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewTripPage } from "./pages/NewTripPage";
 import { NewTripStepPage } from "./pages/NewTripStepPage";
@@ -26,7 +33,13 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <LandingPage /> },
+      { index: true, element: <Navigate to="/vi" replace /> },
+      { path: "vi", element: <LandingPage /> },
+      { path: "en", element: <LandingPage /> },
+      { path: "vi/tinh-nang", element: <FeaturesPage /> },
+      { path: "en/features", element: <FeaturesPage /> },
+      { path: "vi/cach-hoat-dong", element: <HowItWorksPage /> },
+      { path: "en/how-it-works", element: <HowItWorksPage /> },
       { path: "share/:token", element: <PublicTripPage /> },
       { path: "blogs/:token", element: <PublicTripBlogPage /> },
       {
