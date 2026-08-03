@@ -1,6 +1,7 @@
 import { CalendarDays, CircleDollarSign, MapPin } from "lucide-react";
 import type { TripBlogContent } from "../../api/blogs";
 import type { Locale } from "../../i18n/messages";
+import { useI18n } from "../../i18n";
 import { TripStepImageCarousel } from "../trips/TripStepImageCarousel";
 import { formatDateRange, formatMoney, resolveAssetUrl } from "../trips/tripFormatting";
 
@@ -11,6 +12,7 @@ type BlogArticleProps = {
 };
 
 export function BlogArticle({ content, locale, publishedLabel }: BlogArticleProps) {
+  const { t } = useI18n();
   const coverUrl = resolveAssetUrl(content.coverImageUrl);
 
   return (
@@ -19,7 +21,7 @@ export function BlogArticle({ content, locale, publishedLabel }: BlogArticleProp
         {coverUrl ? <img className="absolute inset-0 -z-20 h-full w-full object-cover" src={coverUrl} alt="" /> : null}
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(12,34,31,0.94),rgba(12,34,31,0.64)_58%,rgba(12,34,31,0.25))]" />
         <div className="flex min-h-[22rem] max-w-3xl flex-col justify-end">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-100">TripFlow journal</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-100">{t("blog.journalLabel")}</p>
           <h1 className="mt-5 max-w-2xl text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">{content.title}</h1>
           <p className="mt-6 max-w-2xl text-pretty text-base leading-8 text-white/85 sm:text-lg">{content.introduction}</p>
           <div className="mt-8 flex flex-wrap gap-3 text-sm">

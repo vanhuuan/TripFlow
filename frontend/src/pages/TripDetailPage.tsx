@@ -98,7 +98,7 @@ export function TripDetailPage() {
   }
 
   async function handleDeleteTrip() {
-    if (!tripId || !window.confirm("X�a chuy?n di n�y? Thao t�c n�y kh�ng th? ho�n t�c.")) return;
+    if (!tripId || !window.confirm(t("common.deleteTripConfirm"))) return;
     setIsMutating(true);
     try {
       await deleteTrip(tripId);
@@ -220,8 +220,8 @@ export function TripDetailPage() {
         <div className="surface-card p-5 sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-ink">Bill split</h2>
-              <p className="mt-1 text-sm text-stone-600">Each step cost is split evenly between members selected for that step.</p>
+              <h2 className="text-base font-semibold text-ink">{t("members.billSplit")}</h2>
+              <p className="mt-1 text-sm text-stone-600">{t("members.billSplitDescription")}</p>
             </div>
             <Link className="button-secondary pressable active:scale-[0.96]" to={`/trips/${trip.id}/edit`}>
               Manage members
@@ -299,7 +299,7 @@ export function TripDetailPage() {
                     {trip.members.length > 0 ? (
                       <p className="mt-1 text-sm text-stone-600">
                         Members: {getStepParticipants(step, trip.members).map((member) => member.name).join(", ")}
-                        {step.costAmount != null && getStepParticipants(step, trip.members).length > 0 ? ` · ${formatMoney(Number(step.costAmount) / getStepParticipants(step, trip.members).length, trip.currencyCode, locale)} each` : ""}
+                        {step.costAmount != null && getStepParticipants(step, trip.members).length > 0 ? ` · ${formatMoney(Number(step.costAmount) / getStepParticipants(step, trip.members).length, trip.currencyCode, locale)} ${t("members.each")}` : ""}
                       </p>
                     ) : null}
                     {step.description ? <p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-stone-700">{step.description}</p> : <p className="mt-1 text-sm text-stone-500">{t("common.noDescriptionYet")}</p>}

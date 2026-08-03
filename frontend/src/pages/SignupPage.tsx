@@ -22,14 +22,14 @@ export function SignupPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const signupSchema = z
     .object({
-      displayName: z.string().trim().min(2, "Tên hiển thị phải có ít nhất 2 ký tự.").max(100, "Tên hiển thị quá dài."),
+      displayName: z.string().trim().min(2, t("common.displayNameMinLength")).max(100, t("common.displayNameTooLong")),
       email: z.string().trim().email(t("common.invalidEmail")),
-      password: z.string().min(8, "Mật khẩu phải có ít nhất 8 ký tự.").max(128, "Mật khẩu quá dài."),
-      confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu."),
+      password: z.string().min(8, t("common.passwordMinLength")).max(128, t("common.passwordTooLong")),
+      confirmPassword: z.string().min(1, t("common.confirmPasswordRequired")),
     })
     .refine((values) => values.password === values.confirmPassword, {
       path: ["confirmPassword"],
-      message: "Mật khẩu không khớp.",
+      message: t("common.passwordsDoNotMatch"),
     });
   type SignupFormValues = z.infer<typeof signupSchema>;
   const {

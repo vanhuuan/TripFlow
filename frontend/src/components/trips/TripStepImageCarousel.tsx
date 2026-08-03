@@ -10,8 +10,9 @@ type TripStepImageCarouselProps = {
   variant?: "default" | "compact";
 };
 
-export function TripStepImageCarousel({ imageUrls, altPrefix = "Step image", className = "", variant = "default" }: TripStepImageCarouselProps) {
+export function TripStepImageCarousel({ imageUrls, altPrefix, className = "", variant = "default" }: TripStepImageCarouselProps) {
   const { t } = useI18n();
+  const resolvedAltPrefix = altPrefix ?? t("tripSteps.stepImages");
   const [activeIndex, setActiveIndex] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const isCompact = variant === "compact";
@@ -64,7 +65,7 @@ export function TripStepImageCarousel({ imageUrls, altPrefix = "Step image", cla
         <div className="surface-card relative overflow-hidden">
           <button type="button" className="group relative block w-full cursor-zoom-in overflow-hidden text-left" onClick={() => setIsExpanded(true)} aria-label={t("tripSteps.expandStepImages")}>
             <div className={`relative w-full overflow-hidden bg-stone-100 ${frameClassName}`}>
-              <img className="image-outline block h-full w-full object-contain" src={activeUrl} alt={`${altPrefix} ${activeIndex + 1}`} />
+              <img className="image-outline block h-full w-full object-contain" src={activeUrl} alt={`${resolvedAltPrefix} ${activeIndex + 1}`} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/0 to-transparent" />
               <div className={`absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 text-white ${isCompact ? "p-3" : "p-4"}`}>
                 <div>
@@ -102,7 +103,7 @@ export function TripStepImageCarousel({ imageUrls, altPrefix = "Step image", cla
                 onClick={() => setActiveIndex(index)}
                 aria-label={`${t("tripSteps.showImage")} ${index + 1}`}
               >
-                <img className="block h-full w-full object-cover" src={url} alt={`${altPrefix} thumbnail ${index + 1}`} />
+                <img className="block h-full w-full object-cover" src={url} alt={`${resolvedAltPrefix} ${index + 1}`} />
               </button>
             ))}
           </div>
@@ -127,7 +128,7 @@ export function TripStepImageCarousel({ imageUrls, altPrefix = "Step image", cla
             <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
               <div className="relative overflow-hidden rounded-[1.5rem] bg-stone-100">
                 <div className="relative h-[56vh] max-h-[34rem] min-h-72 overflow-hidden">
-                  <img className="image-outline block h-full w-full bg-black object-contain" src={activeUrl} alt={`${altPrefix} ${activeIndex + 1}`} />
+                  <img className="image-outline block h-full w-full bg-black object-contain" src={activeUrl} alt={`${resolvedAltPrefix} ${activeIndex + 1}`} />
                 </div>
                 {resolvedUrls.length > 1 ? (
                   <>
@@ -157,7 +158,7 @@ export function TripStepImageCarousel({ imageUrls, altPrefix = "Step image", cla
                         aria-label={`${t("tripSteps.showImage")} ${index + 1}`}
                       >
                         <div className="aspect-square bg-stone-100">
-                          <img className="block h-full w-full object-cover" src={url} alt={`${altPrefix} grid ${index + 1}`} />
+                          <img className="block h-full w-full object-cover" src={url} alt={`${resolvedAltPrefix} ${index + 1}`} />
                         </div>
                       </button>
                     ))}

@@ -6,17 +6,19 @@ import { formatMoney, resolveAssetUrl } from "./tripFormatting";
 import { PlaceAutocomplete } from "./PlaceAutocomplete";
 import { z } from "zod";
 
-const stepSchema = z.object({
-  title: z.string().trim().min(1, "Tiêu đề là bắt buộc.").max(150, "Tiêu đề quá dài."),
-  description: z.string().max(2000, "Mô tả quá dài.").optional(),
+function createStepSchema(t: (path: string) => string) {
+  return z.object({
+  title: z.string().trim().min(1, t("common.titleRequired")).max(150, t("common.titleTooLong")),
+  description: z.string().max(2000, t("common.descriptionTooLong")).optional(),
   type: z.enum(["Place", "Transport", "Hotel", "Restaurant", "Activity", "Note"]),
   scheduledAt: z.string().optional(),
   costAmount: z.string().optional(),
-  googleMapsUrl: z.string().max(2048, "URL Google Maps quá dài.").optional(),
-  externalUrl: z.string().max(2048, "URL bên ngoài quá dài.").optional(),
-});
+  googleMapsUrl: z.string().max(2048, t("common.googleMapsUrlTooLong")).optional(),
+  externalUrl: z.string().max(2048, t("common.externalUrlTooLong")).optional(),
+  });
+}
 
-type StepFormValues = z.infer<typeof stepSchema>;
+type StepFormValues = z.infer<ReturnType<typeof createStepSchema>>;
 
 type TripStepFormProps = {
   step?: TripStep;
@@ -30,6 +32,7 @@ type TripStepFormProps = {
 
 export function TripStepForm({ step, submitLabel, isSaving, serverError, currencyCode, members, onSubmit }: TripStepFormProps) {
   const { locale, t } = useI18n();
+  const stepSchema = createStepSchema(t);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -74,7 +77,7 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
 
     const parsedCost = parsedValues.data.costAmount?.trim() ? Number(parsedValues.data.costAmount) : null;
     if (parsedValues.data.costAmount?.trim() && (parsedCost === null || !Number.isFinite(parsedCost) || parsedCost < 0)) {
-      setError("costAmount", { message: "Chi phí phải bằng 0 hoặc lớn hơn." });
+      setError("costAmount", { message: t("common.costMustBeNonNegative") });
       return;
     }
 
@@ -167,8 +170,8 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
       {members.length > 0 ? (
         <div className="space-y-3">
           <div>
-            <p className="text-sm font-semibold text-stone-700">Members joining this step</p>
-            <p className="mt-1 text-xs text-stone-500">The step cost will be split evenly across selected members.</p>
+            <p className="text-sm font-semibold text-stone-700">{t("members.joiningThisStep")}</p>
+            <p className="mt-1 text-xs text-stone-500">{t("members.splitStepCostDescription")}</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {members.map((member) => (
@@ -210,7 +213,7 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
         <div className="flex flex-wrap gap-2">
           {currentPreviewUrls.length > 0 ? (
             currentPreviewUrls.map((url, index) => (
-              <img key={`${url}-${index}`} className="image-outline h-20 w-20 rounded-2xl object-cover" src={url} alt={t("tripSteps.currentImage")} />
+              <img key={`${url}-${index}`} className="image-outline h-20 w-20 rounded-2xl object-cover" src={url} alt={t("forms.currentImage")} />
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-stone-200 px-4 py-3 text-sm text-stone-500">{t("tripSteps.noImagesYet")}</div>

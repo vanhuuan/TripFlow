@@ -17,17 +17,17 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
   const { t } = useI18n();
   const tripSchema = z
     .object({
-      title: z.string().trim().min(1, "Tiêu đề là bắt buộc.").max(150, "Tiêu đề quá dài."),
-      destination: z.string().trim().min(1, "Điểm đến là bắt buộc.").max(150, "Điểm đến quá dài."),
-      description: z.string().max(2000, "Mô tả quá dài.").optional(),
+      title: z.string().trim().min(1, t("common.titleRequired")).max(150, t("common.titleTooLong")),
+      destination: z.string().trim().min(1, t("common.destinationRequired")).max(150, t("common.destinationTooLong")),
+      description: z.string().max(2000, t("common.descriptionTooLong")).optional(),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
-      coverImageUrl: z.string().max(2048, "URL ảnh bìa quá dài.").optional(),
-      currencyCode: z.string().trim().min(3, "Tiền tệ là bắt buộc.").max(3, "Tiền tệ phải là mã 3 ký tự."),
+      coverImageUrl: z.string().max(2048, t("common.coverImageUrlTooLong")).optional(),
+      currencyCode: z.string().trim().min(3, t("common.currencyRequired")).max(3, t("common.currencyCodeLength")),
     })
     .refine((values) => !values.startDate || !values.endDate || values.endDate >= values.startDate, {
       path: ["endDate"],
-      message: "Ngày kết thúc phải không sớm hơn ngày bắt đầu.",
+      message: t("common.endDateAfterStart"),
     });
   type TripFormValues = z.infer<typeof tripSchema>;
 
@@ -154,7 +154,7 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block text-sm font-medium sm:col-span-2">
           {t("forms.title")}
-          <input className="form-input mt-1.5" type="text" placeholder="Summer in Kyoto" {...register("title")} />
+          <input className="form-input mt-1.5" type="text" placeholder={t("forms.tripTitlePlaceholder")} {...register("title")} />
           {errors.title ? <span className="mt-1.5 block text-sm text-red-600">{errors.title.message}</span> : null}
         </label>
         <label className="block text-sm font-medium">
@@ -164,14 +164,14 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
         </label>
         <label className="block text-sm font-medium sm:col-span-3">
           {t("forms.destination")}
-          <input className="form-input mt-1.5" type="text" placeholder="Kyoto, Japan" {...register("destination")} />
+          <input className="form-input mt-1.5" type="text" placeholder={t("forms.destinationPlaceholder")} {...register("destination")} />
           {errors.destination ? <span className="mt-1.5 block text-sm text-red-600">{errors.destination.message}</span> : null}
         </label>
       </div>
 
       <label className="block text-sm font-medium">
         {t("forms.description")}
-        <textarea className="form-input mt-1.5 min-h-28 resize-y" placeholder="Notes, goals, or context for this trip" {...register("description")} />
+        <textarea className="form-input mt-1.5 min-h-28 resize-y" placeholder={t("forms.descriptionPlaceholder")} {...register("description")} />
         {errors.description ? <span className="mt-1.5 block text-sm text-red-600">{errors.description.message}</span> : null}
       </label>
 
@@ -179,19 +179,19 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
       <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-stone-700">Trip members</p>
-            <p className="mt-1 text-xs text-stone-500">Add people who can join steps and share bills.</p>
+            <p className="text-sm font-semibold text-stone-700">{t("members.tripMembers")}</p>
+            <p className="mt-1 text-xs text-stone-500">{t("members.tripMembersDescription")}</p>
           </div>
           <button
             className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]"
             type="button"
             onClick={() => setMembers((current) => [...current, { id: null, name: "" }])}
           >
-            Add member
+            {t("members.addMember")}
           </button>
         </div>
         {members.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-stone-200 px-4 py-3 text-sm text-stone-500">No trip members yet.</p>
+          <p className="rounded-2xl border border-dashed border-stone-200 px-4 py-3 text-sm text-stone-500">{t("members.noTripMembers")}</p>
         ) : (
           <div className="space-y-2">
             {members.map((member, index) => (
@@ -200,7 +200,7 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
                   className="form-input"
                   type="text"
                   value={member.name}
-                  placeholder={`Member ${index + 1}`}
+                  placeholder={t("members.memberPlaceholder", { number: index + 1 })}
                   onChange={(event) => setMembers((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, name: event.target.value } : item)))}
                 />
                 <button
@@ -208,7 +208,7 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
                   type="button"
                   onClick={() => setMembers((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                 >
-                  Remove
+                  {t("members.removeMember")}
                 </button>
               </div>
             ))}
@@ -227,7 +227,7 @@ export function TripForm({ trip, submitLabel, isSaving, serverError, onSubmit }:
 
             <div className="flex items-center justify-center bg-stone-50 px-3 py-3 text-stone-400 sm:min-w-16">
               <div className="text-center">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">Trip</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">{t("common.appName")}</div>
                 <div className="text-lg leading-none">?</div>
               </div>
             </div>

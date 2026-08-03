@@ -205,7 +205,7 @@ export function FocusModePage() {
           <div className="surface-card p-5 sm:p-6">
             <h3 className="text-base font-semibold text-ink">{t("focus.upcomingSteps")}</h3>
             {upcomingSteps.length === 0 ? (
-              <p className="mt-3 text-sm text-stone-500">{t("focus.noMoreUpcomingSteps")}</p>
+              <p className="mt-3 text-sm text-stone-500">{t("common.noMoreUpcomingSteps")}</p>
             ) : (
               <ol className="mt-4 space-y-3">
                 {upcomingSteps.map((step) => {
@@ -240,7 +240,7 @@ export function FocusModePage() {
           <div className="surface-card p-5 sm:p-6">
             <h3 className="text-base font-semibold text-ink">{t("focus.completedAndSkipped")}</h3>
             {completedOrSkippedSteps.length === 0 ? (
-              <p className="mt-3 text-sm text-stone-500">{t("focus.nothingHereYet")}</p>
+              <p className="mt-3 text-sm text-stone-500">{t("common.nothingHereYet")}</p>
             ) : (
               <ol className="mt-4 space-y-3">
                 {completedOrSkippedSteps.map((step) => (

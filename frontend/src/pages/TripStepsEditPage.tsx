@@ -1,4 +1,5 @@
 ﻿import { CheckCircle2, Edit, GripVertical, Save, Trash2, X } from "lucide-react";
+import { ArrowDownUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
@@ -19,7 +20,9 @@ import {
 import { PageHeader } from "../components/PageHeader";
 import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel";
 import { PlaceAutocomplete } from "../components/trips/PlaceAutocomplete";
-import { formatDateRange, formatMoney, resolveAssetUrl, statusClassName } from "../components/trips/tripFormatting";
+import { formatDateRange, formatMoney, resolveAssetUrl, statusClassName, statusLabel } from "../components/trips/tripFormatting";
+import { getStepTypeOptions, useI18n } from "../i18n";
+import { stepTypeLabel } from "../components/trips/tripStepFormatting";
 
 type Draft = {
   title: string;
@@ -109,45 +112,50 @@ function isDraftDirty(card: StepCard) {
   return draftSignature(card.draft) !== draftSignature(card.originalDraft);
 }
 
-function validateDraft(draft: Draft) {
-  if (!asText(draft.title).trim()) return "Title is required.";
+function validateDraft(draft: Draft, t: (path: string) => string) {
+  if (!asText(draft.title).trim()) return t("common.titleRequired");
   if (!asText(draft.costAmount).trim()) return null;
 
   const cost = Number(asText(draft.costAmount));
-  if (!Number.isFinite(cost) || cost < 0) return "Cost must be zero or greater.";
+  if (!Number.isFinite(cost) || cost < 0) return t("common.costMustBeNonNegative");
 
   return null;
 }
 
 function StepSummary({ draft, isDirty, currencyCode, members }: { draft: Draft; isDirty: boolean; currencyCode: string; members: TripMember[] }) {
+  const { locale, localeCode, t } = useI18n();
   const scheduledText = asText(draft.scheduledAt);
-  const scheduledLabel = scheduledText ? new Date(scheduledText).toLocaleString() : "Unscheduled";
+  const scheduledLabel = scheduledText ? new Date(scheduledText).toLocaleString(localeCode) : t("common.unscheduled");
   const selectedMembers = members.filter((member) => draft.participantMemberIds.includes(member.id));
-  const participantLabel = selectedMembers.length > 0 ? selectedMembers.map((member) => member.name).join(", ") : members.length > 0 ? "No members selected" : "No trip members";
+  const participantLabel = selectedMembers.length > 0
+    ? selectedMembers.map((member) => member.name).join(", ")
+    : members.length > 0
+      ? t("members.noMembersSelected")
+      : t("members.noTripMembers");
 
   return (
     <div className="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)_180px_220px] md:items-start">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{draft.type}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{stepTypeLabel(draft.type, locale)}</p>
         <p className="mt-1 text-sm text-stone-600">{scheduledLabel}</p>
-        {isDirty ? <p className="mt-2 text-xs font-semibold text-coast">Unsaved changes</p> : null}
+        {isDirty ? <p className="mt-2 text-xs font-semibold text-coast">{t("forms.unsavedChanges")}</p> : null}
       </div>
       <div className="min-w-0">
-        <p className="font-semibold text-ink">{asText(draft.title) || "Untitled step"}</p>
-        {asText(draft.costAmount).trim() ? <p className="mt-1 text-sm text-stone-600">Cost: {formatMoney(draft.costAmount, currencyCode)}</p> : null}
-        <p className="mt-1 text-sm text-stone-600">Members: {participantLabel}</p>
-        {asText(draft.description).trim() ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{asText(draft.description)}</p> : <p className="mt-1 text-sm text-stone-500">No description.</p>}
-        {draft.imageUrls.length > 0 ? <TripStepImageCarousel className="max-w-[180px]" imageUrls={draft.imageUrls} altPrefix={draft.title || "Step"} variant="compact" /> : null}
+        <p className="font-semibold text-ink">{asText(draft.title) || t("tripSteps.untitledStep")}</p>
+        {asText(draft.costAmount).trim() ? <p className="mt-1 text-sm text-stone-600">{t("common.cost")}: {formatMoney(draft.costAmount, currencyCode, locale)}</p> : null}
+        <p className="mt-1 text-sm text-stone-600">{t("members.membersLabel")}: {participantLabel}</p>
+        {asText(draft.description).trim() ? <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{asText(draft.description)}</p> : <p className="mt-1 text-sm text-stone-500">{t("tripSteps.noDescription")}</p>}
+        {draft.imageUrls.length > 0 ? <TripStepImageCarousel className="max-w-[180px]" imageUrls={draft.imageUrls} altPrefix={draft.title || t("trip.stepSummary")} variant="compact" /> : null}
       </div>
       <div className="flex flex-wrap gap-2 md:justify-end">
         {asText(draft.googleMapsUrl).trim() ? (
           <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={asText(draft.googleMapsUrl).trim()} target="_blank" rel="noreferrer">
-            Maps
+            {t("tripSteps.maps")}
           </a>
         ) : null}
         {asText(draft.externalUrl).trim() ? (
           <a className="rounded border border-stone-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-50" href={asText(draft.externalUrl).trim()} target="_blank" rel="noreferrer">
-            Link
+            {t("tripSteps.link")}
           </a>
         ) : null}
       </div>
@@ -178,9 +186,10 @@ function StepEditor({
   currencyCode: string;
   members: TripMember[];
 }) {
+  const { locale, t } = useI18n();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const costPreview = asText(draft.costAmount).trim() ? formatMoney(draft.costAmount, currencyCode) : `Enter an amount in ${currencyCode}`;
+  const costPreview = asText(draft.costAmount).trim() ? formatMoney(draft.costAmount, currencyCode, locale) : `${t("forms.enterAmountIn")} ${currencyCode}`;
 
   async function handleImageSelection(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -194,7 +203,7 @@ function StepEditor({
       }
       onChange({ ...draft, imageUrls: [...draft.imageUrls, ...uploadedUrls] });
     } catch {
-      setUploadError("Image upload failed.");
+      setUploadError(t("common.imageUploadFailed"));
     } finally {
       setIsUploading(false);
     }
@@ -216,34 +225,34 @@ function StepEditor({
       />
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-sm font-medium">
-          Type
+          {t("tripSteps.type")}
           <select className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.type} onChange={(event) => onChange({ ...draft, type: event.target.value as TripStepType })}>
-            {["Place", "Transport", "Hotel", "Restaurant", "Activity", "Note"].map((value) => (
+            {getStepTypeOptions(locale).map(({ value, label }) => (
               <option key={value} value={value}>
-                {value}
+                {label}
               </option>
             ))}
           </select>
         </label>
         <label className="block text-sm font-medium">
-          Title
+          {t("tripSteps.title")}
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} />
         </label>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-sm font-medium">
-          Scheduled date/time
+          {t("tripSteps.scheduledDateTime")}
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" type="datetime-local" value={draft.scheduledAt} onChange={(event) => onChange({ ...draft, scheduledAt: event.target.value })} />
         </label>
         <label className="block text-sm font-medium">
-          Cost ({currencyCode})
+          {t("tripSteps.cost")} ({currencyCode})
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" inputMode="decimal" type="number" min="0" step="0.01" value={draft.costAmount} onChange={(event) => onChange({ ...draft, costAmount: event.target.value })} />
-          <span className="mt-1 block text-xs text-stone-500">Preview: {costPreview}</span>
+          <span className="mt-1 block text-xs text-stone-500">{t("tripSteps.preview")}: {costPreview}</span>
         </label>
       </div>
       {members.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-stone-700">Members joining this step</p>
+          <p className="text-sm font-semibold text-stone-700">{t("members.joiningThisStep")}</p>
           <div className="grid gap-2 md:grid-cols-2">
             {members.map((member) => (
               <label key={member.id} className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-ink">
@@ -262,16 +271,16 @@ function StepEditor({
           </div>
         </div>
       ) : null}      <label className="block text-sm font-medium">
-        Description
+        {t("tripSteps.description")}
         <textarea className="mt-1 min-h-24 w-full rounded border border-stone-300 px-3 py-2" value={draft.description} onChange={(event) => onChange({ ...draft, description: event.target.value })} />
       </label>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-sm font-medium">
-          Google Maps URL
+          {t("tripSteps.googleMapsUrl")}
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.googleMapsUrl} onChange={(event) => onChange({ ...draft, googleMapsUrl: event.target.value })} />
         </label>
         <label className="block text-sm font-medium">
-          External URL
+          {t("tripSteps.externalUrl")}
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2" value={draft.externalUrl} onChange={(event) => onChange({ ...draft, externalUrl: event.target.value })} />
         </label>
       </div>
@@ -280,39 +289,39 @@ function StepEditor({
           {draft.imageUrls.length > 0 ? (
             draft.imageUrls.map((url, index) => (
               <div key={`${url}-${index}`} className="relative">
-                <img className="h-20 w-20 rounded object-cover ring-1 ring-stone-200" src={imagePreview(url)} alt="Current image" />
-                <button type="button" className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-stone-700 shadow hover:bg-white" onClick={() => removeImage(url)} aria-label="Remove image">
+                <img className="h-20 w-20 rounded object-cover ring-1 ring-stone-200" src={imagePreview(url)} alt={t("forms.currentImage")} />
+                <button type="button" className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-stone-700 shadow hover:bg-white" onClick={() => removeImage(url)} aria-label={t("tripSteps.removeImage")}>
                   <X size={14} aria-hidden="true" />
                 </button>
               </div>
             ))
           ) : (
-            <div className="text-sm text-stone-500">No images yet.</div>
+            <div className="text-sm text-stone-500">{t("tripSteps.noImagesYet")}</div>
           )}
         </div>
         <label className="block text-sm font-medium">
-          Select images
+          {t("tripSteps.selectImages")}
           <input className="mt-1 w-full rounded border border-stone-300 px-3 py-2 text-sm" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => void handleImageSelection(event.target.files)} disabled={isUploading || isMutating} />
         </label>
         {uploadError ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{uploadError}</p> : null}
-        {isUploading ? <p className="text-sm text-stone-500">Uploading images...</p> : null}
+        {isUploading ? <p className="text-sm text-stone-500">{t("tripSteps.uploadingImages")}</p> : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className="button-secondary pressable cursor-grab px-3 py-2 text-sm active:cursor-grabbing" draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", draft.title || "step"); onDragStart(); }} onDragEnd={onDragEnd} title="Drag to reorder">
+        <button type="button" className="button-secondary pressable cursor-grab px-3 py-2 text-sm active:cursor-grabbing" draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", draft.title || "step"); onDragStart(); }} onDragEnd={onDragEnd} title={t("tripSteps.dragToReorder")}>
           <GripVertical size={16} aria-hidden="true" />
-          Drag
+          {t("tripSteps.drag")}
         </button>
         <button type="button" className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={onDone} disabled={isMutating || isUploading}>
           <Save size={16} aria-hidden="true" />
-          Done
+          {t("tripSteps.done")}
         </button>
         <button type="button" className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={onCancel} disabled={isMutating || isUploading}>
           <X size={16} aria-hidden="true" />
-          Cancel
+          {t("tripSteps.cancel")}
         </button>
         <button type="button" className="button-danger pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={onDelete} disabled={isMutating || isUploading}>
           <Trash2 size={16} aria-hidden="true" />
-          Delete
+          {t("tripSteps.delete")}
         </button>
       </div>
     </div>
@@ -323,9 +332,30 @@ function cardOrderSignature(cards: StepCard[]) {
   return cards.map((card) => card.serverId ?? card.clientId).join("|");
 }
 
+function sortStepCardsByTime(cards: StepCard[]) {
+  return cards
+    .map((card, index) => {
+      const value = asText(card.draft.scheduledAt).trim();
+      const scheduledTime = value ? new Date(value).getTime() : Number.NaN;
+      return { card, index, scheduledTime };
+    })
+    .sort((left, right) => {
+      const leftIsScheduled = Number.isFinite(left.scheduledTime);
+      const rightIsScheduled = Number.isFinite(right.scheduledTime);
+
+      if (leftIsScheduled && !rightIsScheduled) return -1;
+      if (!leftIsScheduled && rightIsScheduled) return 1;
+      if (!leftIsScheduled && !rightIsScheduled) return left.index - right.index;
+
+      return left.scheduledTime - right.scheduledTime || left.index - right.index;
+    })
+    .map(({ card }) => card);
+}
+
 export function TripStepsEditPage() {
   const { tripId } = useParams();
   const location = useLocation();
+  const { locale, t } = useI18n();
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -363,7 +393,7 @@ export function TripStepsEditPage() {
         setError(null);
       })
       .catch(() => {
-        if (isMounted) setError("Trip could not be loaded.");
+        if (isMounted) setError(t("common.tripCouldNotBeLoaded"));
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -372,7 +402,7 @@ export function TripStepsEditPage() {
     return () => {
       isMounted = false;
     };
-  }, [location.state, tripId]);
+  }, [location.state, t, tripId]);
 
   const hasUnsavedChanges = useMemo(() => {
     const currentOrder = cardOrderSignature(cards);
@@ -387,6 +417,11 @@ export function TripStepsEditPage() {
     const draft = { ...blankDraft(), participantMemberIds: trip?.members.map((member) => member.id) ?? [] };
     const clientId = createClientId();
     setCards((current) => [...current, { clientId, serverId: null, draft, originalDraft: draft, isEditing: true }]);
+    setError(null);
+  }
+
+  function handleSortByTime() {
+    setCards((current) => sortStepCardsByTime(current));
     setError(null);
   }
 
@@ -413,7 +448,8 @@ export function TripStepsEditPage() {
   }
 
   async function deleteCard(card: StepCard) {
-    if (!tripId || !window.confirm(`Delete step "${card.draft.title || "Untitled step"}"? This cannot be undone.`)) return;
+    const title = card.draft.title || t("tripSteps.untitledStep");
+    if (!tripId || !window.confirm(t("tripSteps.deleteConfirm", { title }))) return;
 
     if (card.serverId === null) {
       setCards((current) => current.filter((item) => item.clientId !== card.clientId));
@@ -427,7 +463,7 @@ export function TripStepsEditPage() {
       setSavedOrder((current) => current.filter((id) => id !== card.serverId));
       setError(null);
     } catch {
-      setError("Step could not be deleted.");
+      setError(t("common.stepCouldNotBeDeleted"));
     } finally {
       setIsSaving(false);
     }
@@ -437,7 +473,7 @@ export function TripStepsEditPage() {
     if (!tripId || !cards.length) return;
 
     for (const card of cards) {
-      const validationError = validateDraft(card.draft);
+      const validationError = validateDraft(card.draft, t);
       if (validationError) {
         setError(validationError);
         updateCard(card.clientId, (current) => ({ ...current, isEditing: true }));
@@ -492,7 +528,7 @@ export function TripStepsEditPage() {
       setSavedOrder(persistedIds);
       setError(null);
     } catch {
-      setError("Changes could not be saved.");
+      setError(t("common.changesCouldNotBeSaved"));
     } finally {
       setIsSaving(false);
     }
@@ -507,7 +543,7 @@ export function TripStepsEditPage() {
       setTrip(startedTrip);
       setError(null);
     } catch {
-      setError("Trip could not be started.");
+      setError(t("common.tripCouldNotBeStarted"));
     } finally {
       setIsSaving(false);
     }
@@ -522,22 +558,22 @@ export function TripStepsEditPage() {
       setTrip(completedTrip);
       setError(null);
     } catch {
-      setError("Trip could not be completed.");
+      setError(t("common.tripCouldNotBeCompleted"));
     } finally {
       setIsSaving(false);
     }
   }
   if (isLoading) {
-    return <div className="surface-card px-5 py-4 text-sm text-stone-600">Loading steps...</div>;
+    return <div className="surface-card px-5 py-4 text-sm text-stone-600">{t("trip.loadingSteps")}</div>;
   }
 
   if (!tripId || !trip) {
     return (
       <section className="space-y-8">
-        <PageHeader eyebrow="Itinerary" title="Step list not found" description="The trip could not be loaded for step editing." />
+        <PageHeader eyebrow={t("trip.itinerary")} title={t("trip.stepListNotFound")} description={t("trip.stepListLoadDescription")} />
         {error ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
         <Link className="button-primary pressable active:scale-[0.96]" to="/dashboard">
-          Back to dashboard
+          {t("common.backToDashboard")}
         </Link>
       </section>
     );
@@ -548,8 +584,8 @@ export function TripStepsEditPage() {
   return (
     <section className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader eyebrow="Itinerary" title="Edit steps" description={trip.title} />
-        <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusClassName(trip.status)}`}>{trip.status}</span>
+        <PageHeader eyebrow={t("trip.itinerary")} title={t("trip.editStepsTitle")} description={trip.title} />
+        <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusClassName(trip.status)}`}>{statusLabel(trip.status, locale)}</span>
       </div>
 
       {error ? <p className="surface-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
@@ -557,28 +593,28 @@ export function TripStepsEditPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="surface-card overflow-hidden">
           <div className="h-56 bg-stone-100">
-            {coverUrl ? <img className="image-outline h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">No cover image</div>}
+            {coverUrl ? <img className="image-outline h-full w-full object-cover" src={coverUrl} alt="" /> : <div className="flex h-full items-center justify-center text-sm text-stone-500">{t("common.noCoverImage")}</div>}
           </div>
           <div className="space-y-4 p-5">
             <div>
-              <h2 className="text-base font-semibold">Trip information</h2>
-              <p className="mt-1 text-sm text-stone-600">{formatDateRange(trip.startDate, trip.endDate)}</p>
+              <h2 className="text-base font-semibold">{t("trip.tripInformation")}</h2>
+              <p className="mt-1 text-sm text-stone-600">{formatDateRange(trip.startDate, trip.endDate, locale)}</p>
             </div>
-            {trip.description ? <p className="whitespace-pre-wrap text-sm leading-7 text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">No description yet.</p>}
+            {trip.description ? <p className="whitespace-pre-wrap text-sm leading-7 text-stone-700">{trip.description}</p> : <p className="text-sm text-stone-500">{t("common.noDescriptionYet")}</p>}
           </div>
         </div>
 
         <div className="surface-card space-y-3 p-5">
           <button className="button-primary pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void handleStartTrip()} disabled={isSaving || trip.status === "Active"}>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Start trip
+            {t("trip.startTrip")}
           </button>
           <button className="button-ghost pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void handleCompleteTrip()} disabled={isSaving || trip.status === "Completed"}>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Complete trip
+            {t("trip.completeTrip")}
           </button>
           <Link className="button-secondary pressable w-full active:scale-[0.96]" to={`/trips/${trip.id}`}>
-            Back to trip
+            {t("trip.backToTrip")}
           </Link>
         </div>
       </div>
@@ -586,27 +622,31 @@ export function TripStepsEditPage() {
       <div className="surface-card p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold">Step list editor</h2>
-            <p className="mt-1 text-sm text-stone-600">Add a step to append a new editable card. Reorder locally, then save all changes together.</p>
+            <h2 className="text-base font-semibold">{t("trip.stepListEditor")}</h2>
+            <p className="mt-1 text-sm text-stone-600">{t("forms.addStepToAppend")} {t("forms.reorderLocallyThenSave")} {t("trip.unscheduledStepsLast")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button className="button-secondary pressable active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={handleSortByTime} disabled={isSaving || cards.length < 2} title={t("trip.unscheduledStepsLast")}>
+              <ArrowDownUp size={16} aria-hidden="true" />
+              {t("trip.sortByTime")}
+            </button>
             <button className="button-secondary pressable active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
               <Edit size={16} aria-hidden="true" />
-              Add step
+              {t("trip.addStep")}
             </button>
             <button className="button-primary pressable active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void saveAllChanges()} disabled={isSaving || !hasUnsavedChanges}>
               <Save size={16} aria-hidden="true" />
-              {isSaving ? "Saving..." : "Save all changes"}
+              {isSaving ? t("forms.saving") : t("trip.saveAllChanges")}
             </button>
           </div>
         </div>
 
         {cards.length === 0 ? (
           <div className="mt-5 rounded border border-dashed border-stone-200 p-4">
-            <p className="text-sm text-stone-500">No itinerary steps yet.</p>
+            <p className="text-sm text-stone-500">{t("trip.noItineraryStepsYet")}</p>
             <button className="mt-3 button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" type="button" onClick={addDraftCard} disabled={isSaving}>
               <Edit size={16} aria-hidden="true" />
-              Add your first step
+              {t("trip.addYourFirstStep")}
             </button>
           </div>
         ) : (
@@ -643,7 +683,7 @@ export function TripStepsEditPage() {
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <button type="button" className="button-secondary pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={() => updateCard(card.clientId, (current) => ({ ...current, isEditing: true }))} disabled={isSaving}>
                           <Edit size={16} aria-hidden="true" />
-                          Edit
+                          {t("tripSteps.edit")}
                         </button>
                         <button
                           type="button"
@@ -655,15 +695,15 @@ export function TripStepsEditPage() {
                             setDraggingCardId(card.clientId);
                           }}
                           onDragEnd={() => setDraggingCardId(null)}
-                          title="Drag to reorder"
+                          title={t("tripSteps.dragToReorder")}
                           disabled={isSaving}
                         >
                           <GripVertical size={16} aria-hidden="true" />
-                          Drag
+                          {t("tripSteps.drag")}
                         </button>
                         <button type="button" className="button-danger pressable px-3 py-2 text-sm active:scale-[0.96]" onClick={() => void deleteCard(card)} disabled={isSaving}>
                           <Trash2 size={16} aria-hidden="true" />
-                          Delete
+                          {t("tripSteps.delete")}
                         </button>
                       </div>
                     </>
@@ -674,7 +714,7 @@ export function TripStepsEditPage() {
             <div className="mt-5 flex justify-end">
               <button className="button-secondary pressable active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={addDraftCard} disabled={isSaving}>
                 <Edit size={16} aria-hidden="true" />
-                Add step
+                {t("trip.addStep")}
               </button>
             </div>
           </>

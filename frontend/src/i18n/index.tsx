@@ -5,7 +5,7 @@ type I18nContextValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
   toggleLocale: () => void;
-  t: (path: string) => string;
+  t: (path: string, values?: Record<string, string | number>) => string;
   localeCode: string;
 };
 
@@ -38,7 +38,7 @@ export function I18nProvider({ children, initialLocale }: { children: ReactNode;
   }, [locale]);
 
   const value = useMemo<I18nContextValue>(() => {
-    const t = (path: string) => {
+    const t = (path: string, values?: Record<string, string | number>) => {
       const localized = locale === "vi" ? messages.vi : messages.en;
       const parts = path.split(".");
       let current: unknown = localized;
@@ -50,18 +50,23 @@ export function I18nProvider({ children, initialLocale }: { children: ReactNode;
         current = (current as Record<string, unknown>)[part];
       }
 
-      if (typeof current === "string") {
-        return current;
+      const fallback = typeof current === "string"
+        ? current
+        : path.split(".").reduce<unknown>((node, part) => {
+            if (!node || typeof node !== "object" || !(part in node)) {
+              return undefined;
+            }
+            return (node as Record<string, unknown>)[part];
+          }, messages.en as unknown as Record<string, unknown>);
+      const template = typeof fallback === "string" ? fallback : path;
+
+      if (!values) {
+        return template;
       }
 
-      const fallback = path.split(".").reduce<unknown>((node, part) => {
-        if (!node || typeof node !== "object" || !(part in node)) {
-          return undefined;
-        }
-        return (node as Record<string, unknown>)[part];
-      }, messages.en as unknown as Record<string, unknown>);
-
-      return typeof fallback === "string" ? fallback : path;
+      return template.replace(/\{(\w+)\}/g, (match, key: string) => (
+        Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : match
+      ));
     };
 
     return {
