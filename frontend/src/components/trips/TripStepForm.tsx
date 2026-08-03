@@ -4,6 +4,7 @@ import { uploadFile, type TripMember, type TripStep, type TripStepPayload, type 
 import { useI18n, getStepTypeOptions } from "../../i18n";
 import { formatMoney, resolveAssetUrl } from "./tripFormatting";
 import { PlaceAutocomplete } from "./PlaceAutocomplete";
+import { toDateTimeLocalValue } from "./tripStepFormatting";
 import { z } from "zod";
 
 function createStepSchema(t: (path: string) => string) {
@@ -50,7 +51,7 @@ export function TripStepForm({ step, submitLabel, isSaving, serverError, currenc
       title: step?.title ?? "",
       description: step?.description ?? "",
       type: step?.type ?? "Place",
-      scheduledAt: step?.scheduledAt ? step.scheduledAt.slice(0, 16) : "",
+      scheduledAt: toDateTimeLocalValue(step?.scheduledAt ?? null),
       costAmount: step?.costAmount ?? "",
       googleMapsUrl: step?.googleMapsUrl ?? "",
       externalUrl: step?.externalUrl ?? "",

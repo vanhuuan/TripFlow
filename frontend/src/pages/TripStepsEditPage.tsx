@@ -22,7 +22,7 @@ import { TripStepImageCarousel } from "../components/trips/TripStepImageCarousel
 import { PlaceAutocomplete } from "../components/trips/PlaceAutocomplete";
 import { formatDateRange, formatMoney, resolveAssetUrl, statusClassName, statusLabel } from "../components/trips/tripFormatting";
 import { getStepTypeOptions, useI18n } from "../i18n";
-import { stepTypeLabel } from "../components/trips/tripStepFormatting";
+import { stepTypeLabel, toDateTimeLocalValue } from "../components/trips/tripStepFormatting";
 
 type Draft = {
   title: string;
@@ -73,7 +73,7 @@ function toDraft(step: TripStep): Draft {
     title: asText(step.title),
     description: asText(step.description),
     type: step.type,
-    scheduledAt: step.scheduledAt ? asText(step.scheduledAt).slice(0, 16) : "",
+    scheduledAt: toDateTimeLocalValue(step.scheduledAt),
     costAmount: asText(step.costAmount),
     googleMapsUrl: asText(step.googleMapsUrl),
     externalUrl: asText(step.externalUrl),
