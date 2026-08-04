@@ -1,5 +1,6 @@
 ﻿import { CheckCircle2, Edit, GripVertical, Save, Trash2, X } from "lucide-react";
 import { ArrowDownUp } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
@@ -605,6 +606,10 @@ export function TripStepsEditPage() {
         </div>
 
         <div className="surface-card space-y-3 p-5">
+          <Link className="button-secondary pressable w-full active:scale-[0.96]" to={`/trips/${trip.id}/planner`}>
+            <Sparkles size={18} aria-hidden="true" />
+            {t("planner.openPlanner")}
+          </Link>
           <button className="button-primary pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void handleStartTrip()} disabled={isSaving || trip.status === "Active"}>
             <CheckCircle2 size={18} aria-hidden="true" />
             {t("trip.startTrip")}

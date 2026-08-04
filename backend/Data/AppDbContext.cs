@@ -11,6 +11,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TripMember> TripMembers => Set<TripMember>();
     public DbSet<TripStepParticipant> TripStepParticipants => Set<TripStepParticipant>();
     public DbSet<TripBlog> TripBlogs => Set<TripBlog>();
+    public DbSet<TripPlannerMessage> TripPlannerMessages => Set<TripPlannerMessage>();
+    public DbSet<TripPlanProposal> TripPlanProposals => Set<TripPlanProposal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +97,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(blog => blog.GeneratedAt).IsRequired();
             entity.Property(blog => blog.UpdatedAt).IsRequired();
             entity.HasOne(blog => blog.Trip).WithOne(trip => trip.Blog).HasForeignKey<TripBlog>(blog => blog.TripId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripPlannerMessage>(entity =>
+        {
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.Role).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(message => message.Content).HasMaxLength(8000).IsRequired();
+            entity.Property(message => message.Locale).HasMaxLength(2).IsRequired();
+            entity.Property(message => message.Provider).HasMaxLength(32);
+            entity.Property(message => message.Model).HasMaxLength(100);
+            entity.Property(message => message.CreatedAt).IsRequired();
+            entity.HasIndex(message => new { message.TripId, message.CreatedAt });
+            entity.HasIndex(message => new { message.TripId, message.ClientMessageId }).IsUnique().HasFilter("\"ClientMessageId\" IS NOT NULL");
+            entity.HasIndex(message => message.ReplyToMessageId).IsUnique().HasFilter("\"ReplyToMessageId\" IS NOT NULL");
+            entity.HasOne(message => message.Trip).WithMany(trip => trip.PlannerMessages).HasForeignKey(message => message.TripId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripPlanProposal>(entity =>
+        {
+            entity.HasKey(proposal => proposal.Id);
+            entity.Property(proposal => proposal.BasePlanHash).HasMaxLength(64).IsRequired();
+            entity.Property(proposal => proposal.ProposedPlanJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(proposal => proposal.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(proposal => proposal.CreatedAt).IsRequired();
+            entity.HasIndex(proposal => new { proposal.TripId, proposal.Status });
+            entity.HasIndex(proposal => proposal.AssistantMessageId).IsUnique();
+            entity.HasOne(proposal => proposal.Trip).WithMany(trip => trip.PlanProposals).HasForeignKey(proposal => proposal.TripId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(proposal => proposal.AssistantMessage).WithOne(message => message.Proposal).HasForeignKey<TripPlanProposal>(proposal => proposal.AssistantMessageId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

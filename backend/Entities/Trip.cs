@@ -19,6 +19,8 @@ public class Trip
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<TripStep> Steps { get; set; } = [];
     public ICollection<TripMember> Members { get; set; } = [];
+    public ICollection<TripPlannerMessage> PlannerMessages { get; set; } = [];
+    public ICollection<TripPlanProposal> PlanProposals { get; set; } = [];
     public TripBlog? Blog { get; set; }
 }
 

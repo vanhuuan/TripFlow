@@ -1,5 +1,6 @@
 ﻿import { CheckCircle2, Copy, Edit, Eye, ListPlus, Play, Share2, Trash2, Unlock } from "lucide-react";
 import { BookOpen } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { completeTrip, createTripShareLink, deleteTrip, disableTripShareLink, getTrip, startTrip, type TripDetail, type TripMember, type TripStep } from "../api/trips";
@@ -207,6 +208,10 @@ export function TripDetailPage() {
           <Link className="button-secondary pressable w-full active:scale-[0.96]" to={`/trips/${trip.id}/blog`}>
             <BookOpen size={18} aria-hidden="true" />
             {t("blog.openWorkspace")}
+          </Link>
+          <Link className="button-secondary pressable w-full active:scale-[0.96]" to={`/trips/${trip.id}/planner`}>
+            <Sparkles size={18} aria-hidden="true" />
+            {t("planner.openPlanner")}
           </Link>
           <button className="button-danger pressable w-full active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={handleDeleteTrip} disabled={isMutating}>
             <Trash2 size={18} aria-hidden="true" />

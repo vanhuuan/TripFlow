@@ -9,7 +9,6 @@ using OpenAI.Responses;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Google.GenAI.Types;
 using Type = Google.GenAI.Types.Type;
 
 #pragma warning disable OPENAI001

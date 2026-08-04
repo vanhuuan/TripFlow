@@ -26,6 +26,7 @@ import { SignupPage } from "./pages/SignupPage";
 import { TripDetailPage } from "./pages/TripDetailPage";
 import { TripStepsEditPage } from "./pages/TripStepsEditPage";
 import { TripBlogPage } from "./pages/TripBlogPage";
+import { TripPlannerPage } from "./pages/TripPlannerPage";
 import "./index.css";
 
 const router = createBrowserRouter([
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
           { path: "trips/:tripId/steps/:stepId/edit", element: <EditTripStepPage /> },
           { path: "trips/:tripId/focus", element: <FocusModePage /> },
           { path: "trips/:tripId/blog", element: <TripBlogPage /> },
+          { path: "trips/:tripId/planner", element: <TripPlannerPage /> },
         ],
       },
     ],

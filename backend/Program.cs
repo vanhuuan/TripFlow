@@ -77,6 +77,17 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
             AutoReplenishment = true
         }));
+    options.AddPolicy("planner", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
 });
 
 builder.Services.AddCors(options =>
@@ -120,6 +131,7 @@ builder.Services.AddScoped<IFileStorageService, AzureBlobFileStorageService>();
 builder.Services.AddScoped<IBlogStorageService, AzureBlobBlogStorageService>();
 builder.Services.AddSingleton<ITripBlogMarkdownSerializer, TripBlogMarkdownSerializer>();
 builder.Services.AddScoped<ITripBlogGenerationService, TripBlogGenerationService>();
+builder.Services.AddScoped<ITripPlannerGenerationService, TripPlannerGenerationService>();
 builder.Services.AddSingleton<IConfiguredBlogModel, ConfiguredBlogModel>();
 
 var app = builder.Build();
